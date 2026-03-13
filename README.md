@@ -13,7 +13,7 @@
 
 **Producto Final:** Un sistema de software funcional que resuelve la problemática de [COMPLETAR: ej. seguimiento de materia prima plástica].
 
-**Clientes:** [COMPLETAR: Nombre del negocio o empresa real donde recolectan la info].
+**Clientes:** Emplanorte.
 ## 🛠️ Tecnologías Utilizadas
 **Lenguaje de Backend:** Java.
 
