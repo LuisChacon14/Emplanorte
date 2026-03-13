@@ -1,4 +1,4 @@
-Pagina web emplasur - Universidad de Pamplona
+Sistema de inventario EMPLANORTE - Universidad de Pamplona
 ---
 
 ## 👥 Integrantes
