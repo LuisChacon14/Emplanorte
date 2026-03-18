@@ -3,9 +3,9 @@
 
 |*Nombre*        |  *Rol*                       |
 |:---------------|:---------------------------|
-|**Duvan Manza**  |   Analista / Desarrollador |
-|**Luis Chacon**  |  Analista / Desarrollador  |
-|**Salome Amaya** |   Analista / Desarrollador |
+|**Duvan Manza**  |   Analista / Devops/ Project manager |
+|**Luis Chacon**  |  Analista / Backend developer  |
+|**Salome Amaya** |   Analista / Frontend developer |
 
 ## 📝 Descripción General del Proyecto
 
