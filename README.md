@@ -29,11 +29,18 @@ Para cumplir con los requisitos de la asignatura, el proyecto se divide en las s
 
 **/EVIDENCIAS:** Pruebas del trabajo de campo (Actas, fotos con el cliente, entrevistas y encuestas).
 ## 🎯 Objetivos del Proyecto
-* **Objetivo General:** Desarrollar un sistema de información para la gestión de inventarios en Emplanorte aplicando principios de ingeniería de software.
+* **Objetivo General:** Desarrollar un sistema web que permita gestionar de manera organizada el inventario, las ventas, los clientes, los movimientos financieros y las estadísticas del negocio EMPLANORTE
 * **Objetivos Específicos:**
-    * Realizar el levantamiento de requisitos funcionales y no funcionales con el cliente.
-    * Modelar el sistema mediante casos de uso.
-    * Desarrollar un sistema funcional utilizando Java y PostgreSQL.
+    * Registrar y controlar el inventario de envases y artículos plásticos por unidades.
+    * Automatizar el registro de ventas y el cálculo de ganancias netas.
+    * Gestionar el historial comercial de clientes y la generación de cotizaciones.
+    * Controlar los gastos operativos y visualizar estadísticas financieras para la toma de decisiones.
+## Modulo del sistema
+* **Dashboard:** Resumen financiero diario.
+* **Inventario:** Control detallado de productos.
+* **Ventas y Cotizaciones:** Procesamiento de pedidos y propuestas comerciales.
+* **Finanzas:** Registro de gastos y cálculo de utilidad.
+
 ## 🗓️ Estado de Entregas
 
 **ENTREGA 1:** Recolección y Análisis de Requisitos ➡️ En Proceso.
