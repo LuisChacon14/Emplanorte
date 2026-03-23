@@ -1,0 +1,81 @@
+# =============================================
+#        ARCHIVOS TEMPORALES DE OFFICE
+# =============================================
+~$*
+*.tmp
+*.temp
+Thumbs.db
+
+# =============================================
+#                   JAVA
+# =============================================
+
+# Archivos compilados
+*.class
+
+# Archivos JAR / WAR / EAR
+*.jar
+*.war
+*.ear
+*.nar
+
+# Logs
+*.log
+
+# =============================================
+#              MAVEN (si usas Maven)
+# =============================================
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# =============================================
+#             GRADLE (si usas Gradle)
+# =============================================
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# =============================================
+#                   IDEs
+# =============================================
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# =============================================
+#                  SISTEMA
+# =============================================
+
+# Mac
+.DS_Store
+.AppleDouble
+
+# Windows
+ehthumbs.db
+Desktop.ini
