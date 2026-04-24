@@ -15,8 +15,8 @@ create database emplanorte;
 
 SET client_encoding = 'UTF8';
 
-CREATE SCHEMA IF NOT EXISTS emplanorte;
-SET search_path TO emplanorte;
+/*CREATE SCHEMA IF NOT EXISTS emplanorte;
+SET search_path TO emplanorte;*/
 
 -- ============================================================
 --  EXTENSIONES
