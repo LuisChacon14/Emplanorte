@@ -1,0 +1,65 @@
+================================================================================
+  REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
+  Modulo : Gastos y Categorias (GastoService)
+  Fecha  : 2026-06-05
+  Hora   : 07:53:10 (America/Bogota)
+  Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+================================================================================
+
+RESUMEN
+-------
+  Total de pruebas ejecutadas : 10
+  Pruebas exitosas            : 10
+  Fallos                      : 0
+  Errores                     : 0
+  Omitidas                    : 0
+  Tiempo total                : 1.753 segundos
+  Resultado                   : APROBADO
+
+================================================================================
+DETALLE POR CASO DE PRUEBA
+================================================================================
+
+  #   Caso del Plan  Descripcion                                                Estado   Tiempo
+  --- -------------- ---------------------------------------------------------- -------- -------
+  1   CP-27          Guardar gasto completo - almacenado y retornado             PASO     0.010 s
+  2   CP-27b         Gasto sin fecha - se asigna fecha de hoy automaticamente    PASO     0.005 s
+  3   CP-27c         Gasto con fecha explicita - respeta la fecha indicada       PASO     0.004 s
+  4   CP-33/RF09     Listar todos los gastos - retorna lista completa            PASO     0.003 s
+  5   CP-34          Sin gastos registrados - lista vacia sin error              PASO     0.003 s
+  6   CP-36/RF09     Filtrar por rango de fechas - retorna solo del periodo      PASO     0.005 s
+  7   CP-38          Rango sin resultados - lista vacia sin error                PASO     0.003 s
+  8   CP-30          Crear categoria nueva - queda activa y persistida           PASO     0.004 s
+  9   CP-30b         Listar categorias activas - solo retorna las activas        PASO     0.003 s
+  10  Particion      Valor decimal - se almacena con precision exacta            PASO     0.003 s
+
+================================================================================
+REQUISITOS FUNCIONALES CUBIERTOS
+================================================================================
+
+  RF09 - Registro de gastos del negocio    CP-27, CP-33, CP-36          CUBIERTO
+  RF10 - Gestion de categorias de gasto    CP-30                        CUBIERTO
+
+================================================================================
+OBSERVACIONES
+================================================================================
+
+  - CP-27b verifica la asignacion automatica de fecha cuando el cliente
+    no la proporciona: el servicio usa LocalDate.now() como valor por defecto.
+
+  - CP-28 (gasto con fecha futura) y CP-29 (valor cero/negativo) no estan
+    validados en el servicio actual. Quedan pendientes de implementacion.
+
+  - Todas las pruebas usan mocks (Mockito): no requieren base de datos activa.
+
+================================================================================
+ARCHIVOS DEL PROYECTO
+================================================================================
+
+  Codigo fuente de las pruebas:
+  src/backend/src/test/java/com/emplanorte/service/GastoServiceTest.java
+
+  Servicio bajo prueba:
+  src/backend/src/main/java/com/emplanorte/service/GastoService.java
+
+================================================================================

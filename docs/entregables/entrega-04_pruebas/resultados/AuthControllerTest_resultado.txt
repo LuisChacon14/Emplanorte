@@ -1,0 +1,75 @@
+================================================================================
+  REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
+  Modulo : Autenticacion HTTP (AuthController) — Prueba de Integracion
+  Fecha  : 2026-06-05
+  Hora   : 07:57:56 (America/Bogota)
+  Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+================================================================================
+
+RESUMEN
+-------
+  Total de pruebas ejecutadas : 6
+  Pruebas exitosas            : 6
+  Fallos                      : 0
+  Errores                     : 0
+  Omitidas                    : 0
+  Tiempo total                : 6.068 segundos (levanta Spring Context)
+  Resultado                   : APROBADO
+
+================================================================================
+DETALLE POR CASO DE PRUEBA
+================================================================================
+
+  #   Caso del Plan  Descripcion                                                Estado   Tiempo
+  --- -------------- ---------------------------------------------------------- -------- -------
+  1   CP-45          POST /api/auth/login valido - HTTP 200 con datos usuario    PASO     0.250 s
+  2   CP-46          POST /api/auth/login invalido - HTTP 401                    PASO     0.030 s
+  3   CP-46b         POST /api/auth/login sin correo - HTTP 400                  PASO     0.020 s
+  4   CP-46c         POST /api/auth/login sin contrasena - HTTP 400              PASO     0.018 s
+  5   CP-46d         POST /api/auth/login con body vacio - HTTP 400              PASO     0.017 s
+  6   CP-46e         Mensaje de error generico - no revela si usuario existe     PASO     0.019 s
+
+================================================================================
+TIPO DE PRUEBA
+================================================================================
+
+  Prueba de INTEGRACION HTTP con @WebMvcTest + MockMvc.
+  A diferencia de las pruebas de servicio (unidad), esta prueba levanta
+  el contexto web de Spring y verifica:
+    - Que la ruta POST /api/auth/login existe y esta mapeada
+    - Que los codigos HTTP de respuesta son los correctos
+    - Que el body de respuesta contiene los campos esperados
+    - Que Spring Security esta activa y configurada
+
+================================================================================
+REQUISITOS CUBIERTOS
+================================================================================
+
+  RNF05 - Control de acceso (capa HTTP)                                CUBIERTO
+    - Login exitoso retorna HTTP 200 con nombre, rol y token
+    - Login fallido retorna HTTP 401
+    - Campos obligatorios faltantes retornan HTTP 400
+
+================================================================================
+OBSERVACIONES
+================================================================================
+
+  - El tiempo de ejecucion es mayor (6 segundos vs ~2 segundos en pruebas
+    unitarias) porque @WebMvcTest levanta el contexto web de Spring.
+    Esto es normal y esperado para pruebas de integracion.
+
+  - Se agrego la propiedad -Dnet.bytebuddy.experimental=true al plugin
+    Surefire para compatibilidad con Java 25, que es mas reciente que
+    la version de ByteBuddy incluida en Spring Boot 3.2.5.
+
+================================================================================
+ARCHIVOS DEL PROYECTO
+================================================================================
+
+  Codigo fuente de las pruebas:
+  src/backend/src/test/java/com/emplanorte/controller/AuthControllerTest.java
+
+  Controlador bajo prueba:
+  src/backend/src/main/java/com/emplanorte/controller/AuthController.java
+
+================================================================================

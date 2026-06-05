@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMPLANORTE - Dashboard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Estilos -->
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/app.css">
+</head>
+<body class="app-body">
+    <div class="app-layout">
+
+        <!-- Main Content -->
+        <div class="main-content">
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <div class="page-actions">
+                    <button class="btn-app btn-app-outline" id="btnDescargar">
+                        📥 Descargar reporte
+                    </button>
+                </div>
+            </div>
+
+            <!-- Page Body -->
+            <div class="page-body">
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <label style="font-size:13px; font-weight:600; color:var(--text-medium);">Desde:</label>
+                    <input type="date" id="filtroDesde">
+                    <label style="font-size:13px; font-weight:600; color:var(--text-medium);">Hasta:</label>
+                    <input type="date" id="filtroHasta">
+                    <button class="btn-app btn-app-primary btn-app-sm" id="btnFiltrar">
+                        🔄 Aplicar
+                    </button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <!-- Balance -->
+                    <div class="summary-card">
+                        <div class="card-icon icon-primary">💰</div>
+                        <div class="card-info">
+                            <div class="card-label">Balance</div>
+                            <div class="card-value" id="cardBalance">$ 0</div>
+                        </div>
+                    </div>
+                    <!-- Ventas Totales -->
+                    <div class="summary-card">
+                        <div class="card-icon icon-success">📈</div>
+                        <div class="card-info">
+                            <div class="card-label">Ventas Totales</div>
+                            <div class="card-value" id="cardVentas">$ 0</div>
+                        </div>
+                    </div>
+                    <!-- Gastos Totales -->
+                    <div class="summary-card">
+                        <div class="card-icon icon-danger">📉</div>
+                        <div class="card-info">
+                            <div class="card-label">Gastos Totales</div>
+                            <div class="card-value" id="cardGastos">$ 0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <div class="tab-item active" data-tab="ventas">Últimas Ventas</div>
+                    <div class="tab-item" data-tab="gastos">Últimos Gastos</div>
+                </div>
+
+                <!-- Data Section: Ventas -->
+                <div class="data-section" id="tabVentas">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Ganancia</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyVentas">
+                        </tbody>
+                    </table>
+                    <!-- Empty State Ventas -->
+                    <div class="empty-state hidden" id="emptyVentas">
+                        <div class="empty-icon">🛒</div>
+                        <div class="empty-title">No hay ventas registradas</div>
+                        <div class="empty-desc">Las ventas recientes aparecerán aquí una vez que registres tu primera venta.</div>
+                    </div>
+                </div>
+
+                <!-- Data Section: Gastos -->
+                <div class="data-section hidden" id="tabGastos">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Descripción</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyGastos">
+                        </tbody>
+                    </table>
+                    <!-- Empty State Gastos -->
+                    <div class="empty-state hidden" id="emptyGastos">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">No hay gastos registrados</div>
+                        <div class="empty-desc">Los gastos recientes aparecerán aquí una vez que registres tu primer gasto.</div>
+                    </div>
+                </div>
+
+            </div><!-- /.page-body -->
+        </div><!-- /.main-content -->
+    </div><!-- /.app-layout -->
+
+    <!-- Scripts -->
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        // ---- Inicialización ----
+        checkSession();
+        renderSidebar('dashboard');
+
+        // ---- Estado de la página ----
+        let ventasData = [];
+        let gastosData = [];
+        let activeTab = 'ventas';
+
+        // ---- Elementos DOM ----
+        const filtroDesde = document.getElementById('filtroDesde');
+        const filtroHasta = document.getElementById('filtroHasta');
+        const btnFiltrar = document.getElementById('btnFiltrar');
+        const btnDescargar = document.getElementById('btnDescargar');
+
+        const cardBalance = document.getElementById('cardBalance');
+        const cardVentas = document.getElementById('cardVentas');
+        const cardGastos = document.getElementById('cardGastos');
+
+        const tbodyVentas = document.getElementById('tbodyVentas');
+        const tbodyGastos = document.getElementById('tbodyGastos');
+        const tabVentas = document.getElementById('tabVentas');
+        const tabGastos = document.getElementById('tabGastos');
+        const emptyVentas = document.getElementById('emptyVentas');
+        const emptyGastos = document.getElementById('emptyGastos');
+
+        // ---- Defaults: primer día del mes actual hasta hoy ----
+        function primerDiaMes() {
+            const d = new Date();
+            return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        }
+
+        filtroDesde.value = primerDiaMes();
+        filtroHasta.value = todayISO();
+
+        // ---- Cargar Resumen Dashboard ----
+        async function cargarResumen() {
+            const desde = filtroDesde.value;
+            const hasta = filtroHasta.value;
+
+            try {
+                const resumen = await ApiClient.obtenerResumenDashboard(desde, hasta);
+                const totalVentas = Number(resumen.totalVentas) || 0;
+                const totalGastos = Number(resumen.totalGastos) || 0;
+                const balance = totalVentas - totalGastos;
+
+                cardBalance.textContent = formatCurrency(balance);
+                cardVentas.textContent = formatCurrency(totalVentas);
+                cardGastos.textContent = formatCurrency(totalGastos);
+
+                // Color del balance según sea positivo o negativo
+                if (balance >= 0) {
+                    cardBalance.classList.remove('text-danger');
+                    cardBalance.classList.add('text-success');
+                } else {
+                    cardBalance.classList.remove('text-success');
+                    cardBalance.classList.add('text-danger');
+                }
+            } catch (err) {
+                showToast('Error al cargar el resumen del dashboard', 'error');
+                console.error(err);
+            }
+        }
+
+        // ---- Cargar Ventas Recientes ----
+        async function cargarVentas() {
+            try {
+                const ventas = await ApiClient.listarVentas();
+                ventasData = Array.isArray(ventas) ? ventas : [];
+                renderTablaVentas();
+            } catch (err) {
+                showToast('Error al cargar las ventas', 'error');
+                console.error(err);
+            }
+        }
+
+        // ---- Cargar Gastos Recientes ----
+        async function cargarGastos() {
+            try {
+                const gastos = await ApiClient.listarGastos();
+                gastosData = Array.isArray(gastos) ? gastos : [];
+                renderTablaGastos();
+            } catch (err) {
+                showToast('Error al cargar los gastos', 'error');
+                console.error(err);
+            }
+        }
+
+        // ---- Render tabla de ventas ----
+        function renderTablaVentas() {
+            tbodyVentas.innerHTML = '';
+
+            if (ventasData.length === 0) {
+                tabVentas.querySelector('.data-table').classList.add('hidden');
+                emptyVentas.classList.remove('hidden');
+                return;
+            }
+
+            tabVentas.querySelector('.data-table').classList.remove('hidden');
+            emptyVentas.classList.add('hidden');
+
+            // Mostrar las últimas 20 ventas, ordenadas por fecha descendente
+            const recientes = [...ventasData]
+                .sort((a, b) => new Date(b.fechaVenta || 0) - new Date(a.fechaVenta || 0))
+                .slice(0, 20);
+
+            recientes.forEach((venta, i) => {
+                const tr = document.createElement('tr');
+
+                const estado = venta.estado || 'completada';
+                let badgeClass = 'badge-success';
+                let estadoLabel = 'Completada';
+                if (estado === 'pendiente') {
+                    badgeClass = 'badge-warning';
+                    estadoLabel = 'Pendiente';
+                } else if (estado === 'anulada' || estado === 'cancelada') {
+                    badgeClass = 'badge-danger';
+                    estadoLabel = estado.charAt(0).toUpperCase() + estado.slice(1);
+                }
+
+                const clienteNombre = venta.cliente ? venta.cliente.nombre : 'Sin cliente';
+                const total = Number(venta.total) || 0;
+                const ganancia = Number(venta.ganancia) || 0;
+
+                tr.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${formatDate(venta.fechaVenta)}</td>
+                    <td>${clienteNombre}</td>
+                    <td class="fw-bold">${formatCurrency(total)}</td>
+                    <td class="text-success">${formatCurrency(ganancia)}</td>
+                    <td><span class="badge ${badgeClass}">${estadoLabel}</span></td>
+                `;
+                tbodyVentas.appendChild(tr);
+            });
+        }
+
+        // ---- Render tabla de gastos ----
+        function renderTablaGastos() {
+            tbodyGastos.innerHTML = '';
+
+            if (gastosData.length === 0) {
+                tabGastos.querySelector('.data-table').classList.add('hidden');
+                emptyGastos.classList.remove('hidden');
+                return;
+            }
+
+            tabGastos.querySelector('.data-table').classList.remove('hidden');
+            emptyGastos.classList.add('hidden');
+
+            // Mostrar los últimos 20 gastos, ordenados por fecha descendente
+            const recientes = [...gastosData]
+                .sort((a, b) => new Date(b.fechaGasto || 0) - new Date(a.fechaGasto || 0))
+                .slice(0, 20);
+
+            recientes.forEach((gasto, i) => {
+                const tr = document.createElement('tr');
+                const categoria = gasto.categoria ? gasto.categoria.nombre : 'Sin categoría';
+                const descripcion = gasto.descripcion || '-';
+                const valor = Number(gasto.valor) || 0;
+
+                tr.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${formatDate(gasto.fechaGasto)}</td>
+                    <td><span class="badge badge-primary">${categoria}</span></td>
+                    <td>${descripcion}</td>
+                    <td class="fw-bold text-danger">${formatCurrency(valor)}</td>
+                `;
+                tbodyGastos.appendChild(tr);
+            });
+        }
+
+        // ---- Tabs ----
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeTab = tab.dataset.tab;
+
+                if (activeTab === 'ventas') {
+                    tabVentas.classList.remove('hidden');
+                    tabGastos.classList.add('hidden');
+                } else {
+                    tabVentas.classList.add('hidden');
+                    tabGastos.classList.remove('hidden');
+                }
+            });
+        });
+
+        // ---- Filtro por fecha ----
+        btnFiltrar.addEventListener('click', () => {
+            if (filtroDesde.value > filtroHasta.value) {
+                showToast('La fecha "Desde" no puede ser mayor que "Hasta"', 'warning');
+                return;
+            }
+            cargarResumen();
+        });
+
+        // ---- Descargar Reporte CSV ----
+        btnDescargar.addEventListener('click', () => {
+            const desde = filtroDesde.value;
+            const hasta = filtroHasta.value;
+
+            // Generar CSV con datos actuales
+            let csv = '';
+
+            // Sección Resumen
+            csv += 'REPORTE EMPLANORTE\n';
+            csv += `Período: ${formatDate(desde)} - ${formatDate(hasta)}\n`;
+            csv += `Generado: ${formatDateTime(new Date().toISOString())}\n\n`;
+
+            // Sección Ventas
+            csv += 'ÚLTIMAS VENTAS\n';
+            csv += '#,Fecha,Cliente,Total,Ganancia,Estado\n';
+            if (ventasData.length > 0) {
+                const ventasOrdenadas = [...ventasData]
+                    .sort((a, b) => new Date(b.fechaVenta || 0) - new Date(a.fechaVenta || 0))
+                    .slice(0, 20);
+                ventasOrdenadas.forEach((v, i) => {
+                    const cliente = (v.cliente ? v.cliente.nombre : 'Sin cliente').replace(/,/g, ';');
+                    const total = Number(v.total) || 0;
+                    const ganancia = Number(v.ganancia) || 0;
+                    const estado = v.estado || 'completada';
+                    csv += `${i + 1},${formatDate(v.fechaVenta)},${cliente},${total},${ganancia},${estado}\n`;
+                });
+            } else {
+                csv += 'Sin datos\n';
+            }
+
+            csv += '\n';
+
+            // Sección Gastos
+            csv += 'ÚLTIMOS GASTOS\n';
+            csv += '#,Fecha,Categoría,Descripción,Valor\n';
+            if (gastosData.length > 0) {
+                const gastosOrdenados = [...gastosData]
+                    .sort((a, b) => new Date(b.fechaGasto || 0) - new Date(a.fechaGasto || 0))
+                    .slice(0, 20);
+                gastosOrdenados.forEach((g, i) => {
+                    const cat = (g.categoria ? g.categoria.nombre : 'Sin categoría').replace(/,/g, ';');
+                    const desc = (g.descripcion || '-').replace(/,/g, ';');
+                    const valor = Number(g.valor) || 0;
+                    csv += `${i + 1},${formatDate(g.fechaGasto)},${cat},${desc},${valor}\n`;
+                });
+            } else {
+                csv += 'Sin datos\n';
+            }
+
+            // Descargar
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `reporte_emplanorte_${desde}_${hasta}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Reporte descargado exitosamente', 'success');
+        });
+
+        // ---- Carga inicial ----
+        async function init() {
+            await Promise.all([
+                cargarResumen(),
+                cargarVentas(),
+                cargarGastos()
+            ]);
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMPLANORTE - Cotizaciones</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Estilos -->
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/app.css">
+    <style>
+        /* Line-items table inside modal */
+        .line-items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+        .line-items-table thead th {
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            background: #fafbfc;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .line-items-table tbody td {
+            padding: 8px 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f2f5;
+            vertical-align: middle;
+        }
+        .line-items-table select,
+        .line-items-table input {
+            width: 100%;
+            padding: 7px 8px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: var(--font-sans);
+            color: var(--text-dark);
+            background: #fff;
+            outline: none;
+            transition: var(--transition);
+        }
+        .line-items-table select:focus,
+        .line-items-table input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.15);
+        }
+        .line-items-table .col-producto { width: 38%; }
+        .line-items-table .col-cantidad { width: 14%; }
+        .line-items-table .col-precio   { width: 18%; }
+        .line-items-table .col-subtotal { width: 18%; }
+        .line-items-table .col-accion   { width: 12%; text-align: center; }
+        .btn-remove-line {
+            background: none;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            color: var(--danger);
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .btn-remove-line:hover {
+            background: var(--danger-light);
+            border-color: var(--danger);
+        }
+        .totals-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 12px 0 0;
+            border-top: 1px solid var(--card-border);
+        }
+        .totals-section .total-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+        .totals-section .total-row label {
+            font-weight: 600;
+            color: var(--text-medium);
+            min-width: 100px;
+            text-align: right;
+        }
+        .totals-section .total-row span {
+            font-weight: 700;
+            color: var(--text-dark);
+            min-width: 120px;
+            text-align: right;
+        }
+        .totals-section .total-row input {
+            width: 120px;
+            padding: 7px 8px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: var(--font-sans);
+            color: var(--text-dark);
+            text-align: right;
+            outline: none;
+            transition: var(--transition);
+        }
+        .totals-section .total-row input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.15);
+        }
+        .totals-section .total-final {
+            font-size: 16px;
+        }
+        .totals-section .total-final span {
+            color: var(--primary);
+            font-size: 16px;
+        }
+        .modal-lg .modal {
+            max-width: 720px;
+        }
+        .btn-add-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px dashed var(--primary);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: var(--font-sans);
+        }
+        .btn-add-line:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+        .data-table .btn-convertir {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body class="app-body">
+    <div class="app-layout">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">Cotizaciones</h1>
+                <div class="page-actions">
+                    <button class="btn-app btn-app-primary" onclick="abrirModalNueva()">
+                        <span>＋</span> Nueva Cotización
+                    </button>
+                </div>
+            </div>
+
+            <!-- Page Body -->
+            <div class="page-body">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon icon-primary">📄</div>
+                        <div class="card-info">
+                            <div class="card-label">Total Cotizaciones</div>
+                            <div class="card-value" id="totalCotizaciones">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon icon-warning">⏳</div>
+                        <div class="card-info">
+                            <div class="card-label">Pendientes</div>
+                            <div class="card-value" id="totalPendientes">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon icon-success">✅</div>
+                        <div class="card-info">
+                            <div class="card-label">Convertidas</div>
+                            <div class="card-value" id="totalConvertidas">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="data-section">
+                    <table class="data-table" id="tablaCotizaciones">
+                        <thead>
+                            <tr>
+                                <th>Nº Cotización</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th class="text-right">Subtotal</th>
+                                <th class="text-right">Descuento</th>
+                                <th class="text-right">Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyCotizaciones">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                    <!-- Empty state -->
+                    <div class="empty-state hidden" id="emptyState">
+                        <div class="empty-icon">📄</div>
+                        <div class="empty-title">No hay cotizaciones registradas</div>
+                        <div class="empty-desc">Crea tu primera cotización usando el botón "Nueva Cotización".</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODAL: Nueva Cotización
+         ============================================================ -->
+    <div class="modal-overlay modal-lg" id="modalNuevaCotizacion">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Nueva Cotización</h3>
+                <button class="modal-close" onclick="cerrarModalNueva()">&times;</button>
+            </div>
+            <form id="formCotizacion" onsubmit="guardarCotizacion(event)">
+                <div class="modal-body">
+                    <!-- Cliente y Notas -->
+                    <div class="form-row">
+                        <div class="form-group-app">
+                            <label for="selectCliente">Cliente *</label>
+                            <select id="selectCliente" required>
+                                <option value="">Seleccionar cliente...</option>
+                            </select>
+                        </div>
+                        <div class="form-group-app">
+                            <label for="inputNotas">Notas</label>
+                            <input type="text" id="inputNotas" placeholder="Observaciones opcionales">
+                        </div>
+                    </div>
+
+                    <!-- Line Items -->
+                    <label style="font-size:12px;font-weight:600;color:var(--text-medium);margin-bottom:8px;display:block;">
+                        Productos *
+                    </label>
+                    <table class="line-items-table">
+                        <thead>
+                            <tr>
+                                <th class="col-producto">Producto</th>
+                                <th class="col-cantidad">Cantidad</th>
+                                <th class="col-precio">Precio Unit.</th>
+                                <th class="col-subtotal">Subtotal</th>
+                                <th class="col-accion"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="lineItemsBody">
+                            <!-- Filas dinámicas de productos -->
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn-add-line" onclick="agregarLineaProducto()">
+                        ＋ Agregar producto
+                    </button>
+
+                    <!-- Totals -->
+                    <div class="totals-section">
+                        <div class="total-row">
+                            <label>Subtotal:</label>
+                            <span id="displaySubtotal">$ 0</span>
+                        </div>
+                        <div class="total-row">
+                            <label>Descuento (%):</label>
+                            <input type="number" id="inputDescuento" value="0" min="0" max="100" step="0.01" oninput="recalcularTotales()">
+                        </div>
+                        <div class="total-row total-final">
+                            <label>Total:</label>
+                            <span id="displayTotal">$ 0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-app btn-app-outline" onclick="cerrarModalNueva()">Cancelar</button>
+                    <button type="submit" class="btn-app btn-app-primary" id="btnGuardarCotizacion">Guardar Cotización</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODAL: Convertir a Venta
+         ============================================================ -->
+    <div class="modal-overlay" id="modalConvertir">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>Convertir a Venta</h3>
+                <button class="modal-close" onclick="cerrarModalConvertir()">&times;</button>
+            </div>
+            <form id="formConvertir" onsubmit="confirmarConversion(event)">
+                <div class="modal-body">
+                    <p style="font-size:13px;color:var(--text-medium);margin-bottom:16px;">
+                        Selecciona el método de pago para convertir la cotización
+                        <strong id="labelCotizacionId"></strong> en una venta.
+                    </p>
+                    <div class="form-group-app">
+                        <label for="selectMetodoPago">Método de Pago *</label>
+                        <select id="selectMetodoPago" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="credito">Crédito</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-app btn-app-outline" onclick="cerrarModalConvertir()">Cancelar</button>
+                    <button type="submit" class="btn-app btn-app-success" id="btnConfirmarConversion">Convertir a Venta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        // ---- Estado global ----
+        let cotizaciones = [];
+        let clientes = [];
+        let productos = [];
+        let cotizacionIdConvertir = null;
+        let lineaCounter = 0;
+
+        // ---- Inicialización ----
+        checkSession();
+        renderSidebar('cotizaciones');
+        cargarDatos();
+
+        async function cargarDatos() {
+            try {
+                const [cotizResp, clientesResp, productosResp] = await Promise.all([
+                    ApiClient.listarCotizaciones(),
+                    ApiClient.listarClientes(),
+                    ApiClient.listarProductos()
+                ]);
+                cotizaciones = Array.isArray(cotizResp) ? cotizResp : [];
+                clientes = Array.isArray(clientesResp) ? clientesResp : [];
+                productos = Array.isArray(productosResp) ? productosResp : [];
+
+                renderResumen();
+                renderTabla();
+                poblarSelectClientes();
+            } catch (err) {
+                console.error('Error cargando datos:', err);
+                showToast('Error al cargar datos del servidor', 'error');
+            }
+        }
+
+        // ---- Resumen (summary cards) ----
+        function renderResumen() {
+            document.getElementById('totalCotizaciones').textContent = cotizaciones.length;
+            document.getElementById('totalPendientes').textContent =
+                cotizaciones.filter(c => c.estado === 'pendiente').length;
+            document.getElementById('totalConvertidas').textContent =
+                cotizaciones.filter(c => c.estado === 'convertida').length;
+        }
+
+        // ---- Tabla de cotizaciones ----
+        function renderTabla() {
+            const tbody = document.getElementById('bodyCotizaciones');
+            const empty = document.getElementById('emptyState');
+
+            if (cotizaciones.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = cotizaciones.map(c => {
+                const clienteNombre = c.cliente ? c.cliente.nombre : 'Sin cliente';
+                const badgeClass = mapBadge(c.estado);
+                const estadoLabel = capitalizar(c.estado);
+                const puedeConvertir = c.estado === 'pendiente' || c.estado === 'aceptada';
+
+                const subtotal = Number(c.subtotal) || 0;
+                const descuento = Number(c.descuento) || 0;
+                const total = Number(c.total) || (subtotal - descuento);
+                const numCotizacion = c.numeroCotizacion || c.id || '-';
+
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(String(numCotizacion))}</strong></td>
+                        <td>${formatDate(c.fechaCotizacion)}</td>
+                        <td>${escapeHtml(clienteNombre)}</td>
+                        <td class="text-right">${formatCurrency(subtotal)}</td>
+                        <td class="text-right">${formatCurrency(descuento)}</td>
+                        <td class="text-right fw-bold">${formatCurrency(total)}</td>
+                        <td><span class="badge ${badgeClass}">${estadoLabel}</span></td>
+                        <td>
+                            ${puedeConvertir
+                                ? `<button class="btn-app btn-app-success btn-app-sm btn-convertir" onclick="abrirModalConvertir(${c.id})">
+                                       Convertir a Venta
+                                   </button>`
+                                : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function mapBadge(estado) {
+            const map = {
+                pendiente: 'badge-warning',
+                aceptada: 'badge-primary',
+                rechazada: 'badge-danger',
+                convertida: 'badge-success'
+            };
+            return map[estado] || 'badge-primary';
+        }
+
+        function capitalizar(str) {
+            if (!str) return '-';
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function obtenerNombreCliente(idCliente) {
+            const cliente = clientes.find(c => c.id === idCliente);
+            return cliente ? cliente.nombre : 'Cliente #' + idCliente;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ---- Poblar select clientes ----
+        function poblarSelectClientes() {
+            const select = document.getElementById('selectCliente');
+            select.innerHTML = '<option value="">Seleccionar cliente...</option>';
+            clientes.forEach(c => {
+                const id = c.id;
+                select.innerHTML += `<option value="${id}">${c.nombre}</option>`;
+            });
+        }
+
+        // ---- MODAL: Nueva Cotización ----
+        function abrirModalNueva() {
+            resetFormCotizacion();
+            agregarLineaProducto();
+            openModal('modalNuevaCotizacion');
+        }
+
+        function cerrarModalNueva() {
+            closeModal('modalNuevaCotizacion');
+        }
+
+        function resetFormCotizacion() {
+            document.getElementById('formCotizacion').reset();
+            document.getElementById('lineItemsBody').innerHTML = '';
+            document.getElementById('inputDescuento').value = '0';
+            document.getElementById('displaySubtotal').textContent = '$ 0';
+            document.getElementById('displayTotal').textContent = '$ 0';
+            lineaCounter = 0;
+        }
+
+        // ---- Líneas de producto ----
+        function agregarLineaProducto() {
+            lineaCounter++;
+            const rowId = `line-${lineaCounter}`;
+            const optionsHtml = productos.map(p => {
+                const id = p.id;
+                return `<option value="${id}" data-precio="${p.precioVenta || 0}">${p.nombre}</option>`;
+            }).join('');
+
+            const row = document.createElement('tr');
+            row.id = rowId;
+            row.innerHTML = `
+                <td>
+                    <select class="line-producto" onchange="onProductoChange('${rowId}')" required>
+                        <option value="">Seleccionar...</option>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" class="line-cantidad" value="1" min="1" step="1"
+                           oninput="onCantidadChange('${rowId}')" required>
+                </td>
+                <td>
+                    <input type="number" class="line-precio" value="0" min="0" step="0.01" readonly>
+                </td>
+                <td class="text-right line-subtotal-cell">$ 0</td>
+                <td class="text-center">
+                    <button type="button" class="btn-remove-line" onclick="eliminarLinea('${rowId}')" title="Eliminar línea">✕</button>
+                </td>
+            `;
+            document.getElementById('lineItemsBody').appendChild(row);
+        }
+
+        function onProductoChange(rowId) {
+            const row = document.getElementById(rowId);
+            const select = row.querySelector('.line-producto');
+            const precioInput = row.querySelector('.line-precio');
+            const option = select.options[select.selectedIndex];
+
+            const precio = option && option.dataset.precio ? parseFloat(option.dataset.precio) : 0;
+            precioInput.value = precio;
+            onCantidadChange(rowId);
+        }
+
+        function onCantidadChange(rowId) {
+            const row = document.getElementById(rowId);
+            const cantidad = parseFloat(row.querySelector('.line-cantidad').value) || 0;
+            const precio = parseFloat(row.querySelector('.line-precio').value) || 0;
+            const subtotal = cantidad * precio;
+            row.querySelector('.line-subtotal-cell').textContent = formatCurrency(subtotal);
+            recalcularTotales();
+        }
+
+        function eliminarLinea(rowId) {
+            const tbody = document.getElementById('lineItemsBody');
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.remove();
+                recalcularTotales();
+            }
+            // Asegurar al menos una línea
+            if (tbody.children.length === 0) {
+                agregarLineaProducto();
+            }
+        }
+
+        function recalcularTotales() {
+            const rows = document.getElementById('lineItemsBody').querySelectorAll('tr');
+            let subtotal = 0;
+            rows.forEach(row => {
+                const cantidad = parseFloat(row.querySelector('.line-cantidad').value) || 0;
+                const precio = parseFloat(row.querySelector('.line-precio').value) || 0;
+                subtotal += cantidad * precio;
+            });
+
+            const descuento = parseFloat(document.getElementById('inputDescuento').value) || 0;
+            const total = subtotal - (subtotal * descuento / 100);
+
+            document.getElementById('displaySubtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('displayTotal').textContent = formatCurrency(total);
+        }
+
+        // ---- Guardar cotización ----
+        async function guardarCotizacion(e) {
+            e.preventDefault();
+
+            const idCliente = parseInt(document.getElementById('selectCliente').value);
+            const notas = document.getElementById('inputNotas').value.trim();
+            const descuento = parseFloat(document.getElementById('inputDescuento').value) || 0;
+
+            // Recolectar líneas
+            const rows = document.getElementById('lineItemsBody').querySelectorAll('tr');
+            const detalles = [];
+            let valid = true;
+
+            rows.forEach(row => {
+                const productoSelect = row.querySelector('.line-producto');
+                const idProducto = parseInt(productoSelect.value);
+                const cantidad = parseInt(row.querySelector('.line-cantidad').value) || 0;
+                const precioUnitario = parseFloat(row.querySelector('.line-precio').value) || 0;
+
+                if (!idProducto || cantidad <= 0) {
+                    valid = false;
+                    return;
+                }
+                detalles.push({ idProducto, cantidad, precioUnitario });
+            });
+
+            if (!valid || detalles.length === 0) {
+                showToast('Agrega al menos un producto válido con cantidad.', 'warning');
+                return;
+            }
+
+            const user = getUser();
+            const data = {
+                idCliente,
+                idUsuario: user ? (user.id || user.idUsuario) : null,
+                descuento,
+                notas,
+                detalles
+            };
+
+            const btn = document.getElementById('btnGuardarCotizacion');
+            btn.disabled = true;
+            btn.textContent = 'Guardando...';
+
+            try {
+                await ApiClient.crearCotizacion(data);
+                showToast('Cotización creada exitosamente', 'success');
+                cerrarModalNueva();
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al crear cotización:', err);
+                showToast(err.message || 'Error al crear la cotización', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Guardar Cotización';
+            }
+        }
+
+        // ---- MODAL: Convertir a Venta ----
+        function abrirModalConvertir(id) {
+            cotizacionIdConvertir = id;
+            document.getElementById('labelCotizacionId').textContent = `#${id}`;
+            document.getElementById('selectMetodoPago').value = '';
+            openModal('modalConvertir');
+        }
+
+        function cerrarModalConvertir() {
+            closeModal('modalConvertir');
+            cotizacionIdConvertir = null;
+        }
+
+        async function confirmarConversion(e) {
+            e.preventDefault();
+
+            const metodoPago = document.getElementById('selectMetodoPago').value;
+            if (!metodoPago) {
+                showToast('Selecciona un método de pago', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnConfirmarConversion');
+            btn.disabled = true;
+            btn.textContent = 'Convirtiendo...';
+
+            try {
+                await ApiClient.convertirCotizacionAVenta(cotizacionIdConvertir, metodoPago);
+                showToast('Cotización convertida a venta exitosamente', 'success');
+                cerrarModalConvertir();
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al convertir cotización:', err);
+                showToast(err.message || 'Error al convertir la cotización', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Convertir a Venta';
+            }
+        }
+    </script>
+</body>
+</html>
