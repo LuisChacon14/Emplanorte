@@ -1,0 +1,62 @@
+================================================================================
+  REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
+  Modulo : Ventas HTTP (VentaController) — Prueba de Integracion
+  Fecha  : 2026-06-05
+  Hora   : 07:59:02 (America/Bogota)
+  Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+================================================================================
+
+RESUMEN
+-------
+  Total de pruebas ejecutadas : 6
+  Pruebas exitosas            : 6
+  Fallos                      : 0
+  Errores                     : 0
+  Omitidas                    : 0
+  Tiempo total                : 5.126 segundos (levanta Spring Context)
+  Resultado                   : APROBADO
+
+================================================================================
+DETALLE POR CASO DE PRUEBA
+================================================================================
+
+  #   Caso del Plan  Descripcion                                                Estado   Tiempo
+  --- -------------- ---------------------------------------------------------- -------- -------
+  1   RF05           GET /api/ventas - HTTP 200 con lista de ventas              PASO     0.180 s
+  2   RF05           GET /api/ventas sin registros - HTTP 200 lista vacia        PASO     0.020 s
+  3   CP-13          POST /api/ventas valida - HTTP 201 con venta creada         PASO     0.035 s
+  4   CP-14          POST /api/ventas stock insuficiente - HTTP 400 con mensaje  PASO     0.018 s
+  5   CP-15          POST /api/ventas sin productos - HTTP 400                   PASO     0.016 s
+  6   RF05           POST /api/ventas error generico - HTTP 400 propaga mensaje  PASO     0.015 s
+
+================================================================================
+TIPO DE PRUEBA
+================================================================================
+
+  Prueba de INTEGRACION HTTP con @WebMvcTest + MockMvc.
+  Verifica la capa de controlador REST:
+    - Rutas correctamente mapeadas (GET y POST)
+    - Codigos HTTP apropiados para cada escenario (200, 201, 400)
+    - Body de respuesta contiene los campos esperados
+    - Las RuntimeExceptions del servicio se convierten en HTTP 400
+
+================================================================================
+REQUISITOS CUBIERTOS
+================================================================================
+
+  RF05 - Registro de ventas (capa HTTP)                                CUBIERTO
+    - GET /api/ventas lista todas las ventas
+    - POST /api/ventas registra y retorna HTTP 201 al exito
+    - POST /api/ventas retorna HTTP 400 con mensaje descriptivo al fallar
+
+================================================================================
+ARCHIVOS DEL PROYECTO
+================================================================================
+
+  Codigo fuente de las pruebas:
+  src/backend/src/test/java/com/emplanorte/controller/VentaControllerTest.java
+
+  Controlador bajo prueba:
+  src/backend/src/main/java/com/emplanorte/controller/VentaController.java
+
+================================================================================

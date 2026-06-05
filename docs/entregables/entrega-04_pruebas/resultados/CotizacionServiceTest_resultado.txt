@@ -1,0 +1,74 @@
+================================================================================
+  REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
+  Modulo : Cotizaciones (CotizacionService)
+  Fecha  : 2026-06-05
+  Hora   : 07:50:43 (America/Bogota)
+  Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+================================================================================
+
+RESUMEN
+-------
+  Total de pruebas ejecutadas : 12
+  Pruebas exitosas            : 12
+  Fallos                      : 0
+  Errores                     : 0
+  Omitidas                    : 0
+  Tiempo total                : 1.924 segundos
+  Resultado                   : APROBADO
+
+================================================================================
+DETALLE POR CASO DE PRUEBA
+================================================================================
+
+  #   Caso del Plan  Descripcion                                                Estado   Tiempo
+  --- -------------- ---------------------------------------------------------- -------- -------
+  1   CP-42          Cotizacion exitosa - numero, estado pendiente y fecha       PASO     0.014 s
+  2   CP-42b         Calculo de total - precio $1500 x 3 unidades = $4500        PASO     0.006 s
+  3   CP-42c         Con descuento - total = subtotal - descuento                PASO     0.005 s
+  4   CP-42d         Descuento excesivo - total queda en cero, nunca negativo    PASO     0.004 s
+  5   CP-43          Lista de productos vacia - cotizacion se rechaza            PASO     0.004 s
+  6   CP-44          Cantidad > stock - cotizacion permitida, stock sin cambios  PASO     0.006 s
+  7   RF14           Convertir a venta exitosa - venta creada, estado convertida PASO     0.009 s
+  8   RF14           Convertir descuenta stock del producto correctamente        PASO     0.006 s
+  9   RF14           Convertir cotizacion ya convertida - RuntimeException       PASO     0.004 s
+  10  RF14           Convertir con stock insuficiente - RuntimeException         PASO     0.005 s
+  11  Particion      Cliente inexistente - RuntimeException descriptiva          PASO     0.004 s
+  12  Particion      Cotizacion inexistente al convertir - RuntimeException      PASO     0.003 s
+
+================================================================================
+REQUISITOS FUNCIONALES CUBIERTOS
+================================================================================
+
+  RF14 - Generacion de cotizaciones                                    CUBIERTO
+    CP-42: Creacion exitosa con numero unico, estado y fecha
+    CP-43: Rechazo de cotizacion sin productos
+    CP-44: Cotizacion permite cantidades mayores al stock (no descuenta)
+    Conversion: cotizacion -> venta con validacion de stock al convertir
+
+================================================================================
+OBSERVACIONES
+================================================================================
+
+  - Diferencia clave documentada (CP-44 vs RF08):
+    La COTIZACION no descuenta inventario (es una propuesta comercial).
+    La VENTA si descuenta inventario al confirmar.
+    Al CONVERTIR una cotizacion a venta, se valida stock en ese momento.
+
+  - Se agrego validacion de lista vacia al CotizacionService durante esta
+    fase (CP-43), ya que estaba documentada en el plan pero faltaba en codigo.
+    La validacion ocurre ANTES de generar el numero de cotizacion para no
+    desperdiciar numeros de secuencia.
+
+  - Todas las pruebas usan mocks (Mockito): no requieren base de datos activa.
+
+================================================================================
+ARCHIVOS DEL PROYECTO
+================================================================================
+
+  Codigo fuente de las pruebas:
+  src/backend/src/test/java/com/emplanorte/service/CotizacionServiceTest.java
+
+  Servicio bajo prueba:
+  src/backend/src/main/java/com/emplanorte/service/CotizacionService.java
+
+================================================================================

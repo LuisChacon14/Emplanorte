@@ -1,0 +1,70 @@
+================================================================================
+  REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
+  Modulo : Clientes (ClienteService)
+  Fecha  : 2026-06-05
+  Hora   : 07:54:12 (America/Bogota)
+  Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+================================================================================
+
+RESUMEN
+-------
+  Total de pruebas ejecutadas : 10
+  Pruebas exitosas            : 10
+  Fallos                      : 0
+  Errores                     : 0
+  Omitidas                    : 0
+  Tiempo total                : 1.566 segundos
+  Resultado                   : APROBADO
+
+================================================================================
+DETALLE POR CASO DE PRUEBA
+================================================================================
+
+  #   Caso del Plan  Descripcion                                                Estado   Tiempo
+  --- -------------- ---------------------------------------------------------- -------- -------
+  1   CP-39          Registrar cliente con datos minimos - activo y persistido   PASO     0.010 s
+  2   CP-39b         Campos opcionales no impiden el registro                    PASO     0.004 s
+  3   CP-39c         Listar activos - solo retorna clientes con activo=true      PASO     0.004 s
+  4   RF13           Sin clientes registrados - lista vacia sin error            PASO     0.003 s
+  5   RF13           Obtener por ID - cliente activo retornado correctamente     PASO     0.003 s
+  6   RF13           Obtener por ID - cliente inactivo no se retorna             PASO     0.003 s
+  7   CP-39d         Actualizar cliente existente - nuevos campos guardados      PASO     0.004 s
+  8   RF13           Actualizar cliente inexistente - RuntimeException           PASO     0.004 s
+  9   CP-40          Desactivar cliente - activo=false, no se borra fisicamente  PASO     0.005 s
+  10  RF13           Desactivar cliente inexistente - RuntimeException           PASO     0.003 s
+
+================================================================================
+REQUISITOS FUNCIONALES CUBIERTOS
+================================================================================
+
+  RF13 - Registro y gestion de clientes   CP-39, CP-40                 CUBIERTO
+    - Registro con datos minimos obligatorios
+    - Campos opcionales (direccion, observaciones) no son requeridos
+    - Actualizacion de datos
+    - Eliminacion logica (desactivar, no borrar)
+    - Filtrado: solo clientes activos son visibles
+
+================================================================================
+OBSERVACIONES
+================================================================================
+
+  - CP-40 y CP-41 del plan: la validacion de formato de numero de contacto
+    no esta implementada en el servicio actual (se delega a la BD o al frontend).
+    Queda pendiente agregar validacion de formato en el backend.
+
+  - La eliminacion es siempre logica (activo=false), nunca fisica.
+    Esto preserva la integridad referencial con ventas y cotizaciones historicas.
+
+  - Todas las pruebas usan mocks (Mockito): no requieren base de datos activa.
+
+================================================================================
+ARCHIVOS DEL PROYECTO
+================================================================================
+
+  Codigo fuente de las pruebas:
+  src/backend/src/test/java/com/emplanorte/service/ClienteServiceTest.java
+
+  Servicio bajo prueba:
+  src/backend/src/main/java/com/emplanorte/service/ClienteService.java
+
+================================================================================
