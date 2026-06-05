@@ -79,3 +79,7 @@ nbdist/
 # Windows
 ehthumbs.db
 Desktop.ini
+# Ignorar archivos temporales de Microsoft Office
+~$*.doc*
+~$*.xls*
+~$*.ppt*
