@@ -77,10 +77,27 @@ function getInitials(name) {
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 }
 
+// ---- Avatar: guardar y leer foto de perfil ----
+function getAvatarKey(user) {
+    return 'emplanorte_avatar_' + (user ? (user.id || user.idUsuario || 'default') : 'default');
+}
+
+function getSavedAvatar(user) {
+    return localStorage.getItem(getAvatarKey(user));
+}
+
+function buildAvatarInner(user) {
+    const saved = getSavedAvatar(user);
+    if (saved) {
+        return `<img src="${saved}" alt="foto"><div class="avatar-overlay">📷</div>`;
+    }
+    const initials = user ? getInitials(user.nombre) : '?';
+    return `<span class="avatar-initials">${initials}</span><div class="avatar-overlay">📷</div>`;
+}
+
 // ---- Render Sidebar (inyectar HTML) ----
 function renderSidebar(activePage) {
     const user = getUser();
-    const initials = user ? getInitials(user.nombre) : '?';
     const userName = user ? user.nombre : 'Usuario';
     const userRole = user ? (user.rol === 'superadmin' ? 'Super Admin' : 'Administrador') : '';
 
@@ -88,17 +105,20 @@ function renderSidebar(activePage) {
     <!-- Sidebar Toggle (mobile) -->
     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú">☰</button>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
 
     <aside class="sidebar" id="sidebar">
         <!-- Brand -->
         <div class="sidebar-brand">
-            <div class="brand-icon">E</div>
+            <img src="../img/Logo.png" alt="EMPLANORTE" class="brand-icon">
             <span class="brand-name">EMPLANORTE</span>
         </div>
 
         <!-- User -->
         <div class="sidebar-user">
-            <div class="user-avatar">${initials}</div>
+            <div class="user-avatar" id="userAvatar" title="Cambiar foto de perfil">
+                ${buildAvatarInner(user)}
+            </div>
             <div class="user-info">
                 <div class="user-name">${userName}</div>
                 <div class="user-role">${userRole}</div>
@@ -163,6 +183,40 @@ function renderSidebar(activePage) {
     overlay.addEventListener('click', () => {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
+    });
+
+    // Avatar: abrir selector de archivo al hacer clic
+    const avatarEl = document.getElementById('userAvatar');
+    const fileInput = document.getElementById('avatarFileInput');
+
+    avatarEl.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            const SIZE = 80;
+            const canvas = document.createElement('canvas');
+            canvas.width = SIZE;
+            canvas.height = SIZE;
+            const ctx = canvas.getContext('2d');
+
+            // Recorte centrado (crop cuadrado)
+            const side = Math.min(img.naturalWidth, img.naturalHeight);
+            const sx = (img.naturalWidth - side) / 2;
+            const sy = (img.naturalHeight - side) / 2;
+            ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
+
+            URL.revokeObjectURL(objectUrl);
+            const compressed = canvas.toDataURL('image/jpeg', 0.8);
+            localStorage.setItem(getAvatarKey(user), compressed);
+            avatarEl.innerHTML = `<img src="${compressed}" alt="foto"><div class="avatar-overlay">📷</div>`;
+        };
+        img.src = objectUrl;
+        fileInput.value = '';
     });
 }
 

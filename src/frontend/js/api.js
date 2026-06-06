@@ -32,18 +32,27 @@ const ApiClient = {
 
         try {
             const response = await fetch(url, config);
-            
-            // Si la respuesta es no content (204)
+
             if (response.status === 204) {
                 return true;
             }
 
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || data || 'Error en la petición');
+            // Leer el cuerpo como texto primero para manejar respuestas JSON y texto plano
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (_) {
+                data = text; // El backend devolvió texto plano (ej: mensajes de error)
             }
-            
+
+            if (!response.ok) {
+                const msg = (typeof data === 'object' && data !== null)
+                    ? (data.message || data.error || JSON.stringify(data))
+                    : String(data || 'Error en la petición');
+                throw new Error(msg);
+            }
+
             return data;
         } catch (error) {
             console.error(`Error en API request [${url}]:`, error);
@@ -187,6 +196,10 @@ const ApiClient = {
             method: 'POST',
             body: JSON.stringify({ metodoPago })
         });
+    },
+
+    async eliminarCotizacion(id) {
+        return this.request(`/cotizaciones/${id}`, { method: 'DELETE' });
     },
 
     // ==========================================

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMPLANORTE - Gastos</title>
+    <link rel="icon" type="image/png" href="../img/Logo.png">
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -297,17 +298,18 @@
         }
 
         function renderGastos(gastos) {
+            const tablaGastos = document.getElementById('tablaGastos');
             if (!gastos || gastos.length === 0) {
                 gastosBody.innerHTML = '';
+                tablaGastos.classList.add('hidden');
                 emptyState.classList.remove('hidden');
-                document.getElementById('tablaGastos').querySelector('thead').classList.add('hidden');
                 totalGastosEl.textContent = formatCurrency(0);
                 cantidadGastosEl.textContent = '0';
                 return;
             }
 
+            tablaGastos.classList.remove('hidden');
             emptyState.classList.add('hidden');
-            document.getElementById('tablaGastos').querySelector('thead').classList.remove('hidden');
 
             // Calculate summary
             const totalValor = gastos.reduce((sum, g) => sum + (Number(g.valor) || 0), 0);
