@@ -42,6 +42,19 @@ public class CotizacionService {
     }
 
     @Transactional
+    public void eliminarCotizacion(Long id) {
+        Cotizacion cotizacion = cotizacionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cotización no encontrada"));
+
+        if ("convertida".equals(cotizacion.getEstado())) {
+            throw new RuntimeException("No se puede eliminar una cotización que ya fue convertida a venta");
+        }
+
+        detalleCotizacionRepository.deleteByCotizacionId(id);
+        cotizacionRepository.deleteById(id);
+    }
+
+    @Transactional
     public Cotizacion registrarCotizacion(CotizacionRequest request) {
         Usuario usuario = usuarioRepository.findById(request.getIdUsuario())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -70,6 +83,12 @@ public class CotizacionService {
         for (ItemCotizacionRequest item : request.getDetalles()) {
             Producto producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+            if (producto.getStockDisponible() < item.getCantidad()) {
+                throw new RuntimeException("Stock insuficiente para \"" + producto.getNombre()
+                        + "\". Disponible: " + producto.getStockDisponible()
+                        + ", solicitado: " + item.getCantidad());
+            }
 
             BigDecimal cantidadBD = new BigDecimal(item.getCantidad());
             BigDecimal precioUnitario = producto.getPrecioVenta();

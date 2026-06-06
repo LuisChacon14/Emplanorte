@@ -5,15 +5,15 @@
 
 :root {
     /* Paleta de colores */
-    --bg-dark: #0f172a;       /* Slate 900 */
-    --bg-card: rgba(30, 41, 59, 0.7); /* Slate 800 translúcido */
-    --primary: #3b82f6;       /* Azul eléctrico */
-    --primary-hover: #2563eb;
-    --accent: #10b981;        /* Verde menta/esmeralda */
+    --bg-dark: #071810;       /* Verde muy oscuro / casi negro */
+    --bg-card: rgba(10, 30, 18, 0.80); /* Verde oscuro translúcido */
+    --primary: #3a7e56;       /* Verde EMPLANORTE */
+    --primary-hover: #2d6244;
+    --accent: #6ee7a0;        /* Verde claro complementario */
     --text-primary: #f8fafc;  /* Blanco suave */
     --text-secondary: #94a3b8;/* Gris slate */
     --border-color: rgba(255, 255, 255, 0.08);
-    --border-focus: #3b82f6;
+    --border-focus: #4ade80;
     
     /* Fuentes y bordes */
     --font-sans: 'Inter', sans-serif;
@@ -65,19 +65,21 @@ body {
 }
 
 .circle-1 {
-    width: 400px;
-    height: 400px;
+    width: 500px;
+    height: 500px;
     background: var(--primary);
-    top: -10%;
-    left: -10%;
+    top: -15%;
+    left: -15%;
+    opacity: 0.25;
 }
 
 .circle-2 {
-    width: 500px;
-    height: 500px;
+    width: 600px;
+    height: 600px;
     background: var(--accent);
-    bottom: -15%;
-    right: -10%;
+    bottom: -20%;
+    right: -15%;
+    opacity: 0.12;
 }
 
 /* Contenedor principal del Login */
@@ -106,19 +108,23 @@ body {
     margin-bottom: 30px;
 }
 
-.logo-placeholder {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    border-radius: 50%;
+.login-logo-wrapper {
+    width: 88px;
+    height: 88px;
+    background: #ffffff;
+    border-radius: 16px;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0 auto 15px;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text-primary);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    margin: 0 auto 18px;
+    padding: 10px;
+    box-shadow: 0 6px 20px rgba(58, 126, 86, 0.45);
+}
+
+.login-logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .login-header h1 {
@@ -174,8 +180,8 @@ body {
 
 .input-wrapper input:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    background: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 0 0 3px rgba(58, 126, 86, 0.25);
+    background: rgba(7, 24, 16, 0.85);
 }
 
 .input-wrapper input::placeholder {
@@ -202,12 +208,12 @@ body {
 .btn-primary {
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: var(--text-primary);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 15px rgba(58, 126, 86, 0.35);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 6px 20px rgba(58, 126, 86, 0.50);
 }
 
 .btn-primary:active {

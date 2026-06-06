@@ -7,14 +7,14 @@
 /* ---- Variables de la aplicación ---- */
 :root {
     --sidebar-width: 240px;
-    --sidebar-bg: #ffffff;
-    --sidebar-border: #e8ecf1;
-    --sidebar-text: #4a5568;
-    --sidebar-heading: #a0aec0;
-    --sidebar-active-bg: #ebf5ff;
-    --sidebar-active-text: #2b6cb0;
-    --sidebar-active-border: #3182ce;
-    --sidebar-hover-bg: #f7fafc;
+    --sidebar-bg: #3a7e56;
+    --sidebar-border: #2d6244;
+    --sidebar-text: rgba(255, 255, 255, 0.88);
+    --sidebar-heading: rgba(255, 255, 255, 0.50);
+    --sidebar-active-bg: rgba(255, 255, 255, 0.18);
+    --sidebar-active-text: #ffffff;
+    --sidebar-active-border: #c6f6d5;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.10);
 
     --topbar-height: 0px;
     --content-bg: #f4f6f9;
@@ -91,23 +91,20 @@ a { text-decoration: none; color: inherit; }
 }
 
 .sidebar-brand .brand-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--primary), #2c5282);
+    width: 40px;
+    height: 40px;
+    background: #ffffff;
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-weight: 700;
-    font-size: 16px;
+    padding: 4px;
+    object-fit: contain;
     flex-shrink: 0;
+    display: block;
 }
 
 .sidebar-brand .brand-name {
     font-size: 16px;
     font-weight: 700;
-    color: var(--text-dark);
+    color: #ffffff;
     letter-spacing: -0.3px;
 }
 
@@ -121,17 +118,50 @@ a { text-decoration: none; color: inherit; }
 }
 
 .sidebar-user .user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: var(--primary-light);
-    color: var(--primary);
+    background: rgba(255, 255, 255, 0.20);
+    color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.sidebar-user .user-avatar:hover {
+    border-color: #ffffff;
+}
+
+.sidebar-user .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.sidebar-user .user-avatar .avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 50%;
+}
+
+.sidebar-user .user-avatar:hover .avatar-overlay {
+    opacity: 1;
 }
 
 .sidebar-user .user-info {
@@ -142,7 +172,7 @@ a { text-decoration: none; color: inherit; }
 .sidebar-user .user-name {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -150,7 +180,7 @@ a { text-decoration: none; color: inherit; }
 
 .sidebar-user .user-role {
     font-size: 11px;
-    color: var(--text-light);
+    color: rgba(255, 255, 255, 0.60);
 }
 
 /* Navigation sections */
@@ -191,7 +221,7 @@ a { text-decoration: none; color: inherit; }
 
 .nav-item:hover {
     background: var(--sidebar-hover-bg);
-    color: var(--text-dark);
+    color: #ffffff;
 }
 
 .nav-item.active {
@@ -236,9 +266,9 @@ a { text-decoration: none; color: inherit; }
     width: 100%;
     padding: 9px 12px;
     background: none;
-    border: 1px solid var(--card-border);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: var(--radius-md);
-    color: var(--text-medium);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -255,7 +285,7 @@ a { text-decoration: none; color: inherit; }
 .sidebar-version {
     text-align: center;
     font-size: 10px;
-    color: var(--text-light);
+    color: rgba(255, 255, 255, 0.40);
     padding-top: 8px;
 }
 
@@ -643,7 +673,9 @@ a { text-decoration: none; color: inherit; }
     width: 90%;
     max-width: 560px;
     max-height: 85vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     transform: translateY(20px);
     transition: transform 0.3s ease;
@@ -681,6 +713,8 @@ a { text-decoration: none; color: inherit; }
 
 .modal-body {
     padding: 24px;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .modal-footer {

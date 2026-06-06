@@ -35,6 +35,17 @@ public class CotizacionController {
         }
     }
 
+    // RF14 - Eliminar cotización (solo pendiente/rechazada)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminarCotizacion(@PathVariable Long id) {
+        try {
+            cotizacionService.eliminarCotizacion(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
     // RF14, RF05 - Convertir cotización en venta real
     @PostMapping("/convertir/{id}")
     public ResponseEntity<?> convertirAVenta(@PathVariable Long id, @RequestBody Map<String, String> body) {

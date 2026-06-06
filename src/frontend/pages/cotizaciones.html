@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMPLANORTE - Cotizaciones</title>
+    <link rel="icon" type="image/png" href="../img/Logo.png">
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -403,11 +404,18 @@
                         <td class="text-right fw-bold">${formatCurrency(total)}</td>
                         <td><span class="badge ${badgeClass}">${estadoLabel}</span></td>
                         <td>
-                            ${puedeConvertir
-                                ? `<button class="btn-app btn-app-success btn-app-sm btn-convertir" onclick="abrirModalConvertir(${c.id})">
-                                       Convertir a Venta
-                                   </button>`
-                                : '-'}
+                            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                                ${puedeConvertir
+                                    ? `<button class="btn-app btn-app-success btn-app-sm btn-convertir" onclick="abrirModalConvertir(${c.id})">
+                                           Convertir a Venta
+                                       </button>`
+                                    : ''}
+                                ${c.estado !== 'convertida'
+                                    ? `<button class="btn-app btn-app-danger btn-app-sm" onclick="confirmarEliminar(${c.id}, '${escapeHtml(String(numCotizacion))}')">
+                                           Eliminar
+                                       </button>`
+                                    : ''}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -607,6 +615,23 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Guardar Cotización';
+            }
+        }
+
+        // ---- Eliminar cotización ----
+        function confirmarEliminar(id, numero) {
+            if (!confirm(`¿Eliminar la cotización ${numero}? Esta acción no se puede deshacer.`)) return;
+            eliminarCotizacion(id);
+        }
+
+        async function eliminarCotizacion(id) {
+            try {
+                await ApiClient.eliminarCotizacion(id);
+                showToast('Cotización eliminada', 'success');
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al eliminar cotización:', err);
+                showToast(err.message || 'Error al eliminar la cotización', 'error');
             }
         }
 
