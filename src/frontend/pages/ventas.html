@@ -245,6 +245,7 @@
                                     <th class="text-right">Ganancia</th>
                                     <th>Método Pago</th>
                                     <th>Estado</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="ventasTableBody">
@@ -349,6 +350,7 @@
         let clientes = [];
         let productos = [];
         let lineaCounter = 0;
+        let ventaIdEditando = null;
 
         // ---- Inicialización ----
         checkSession();
@@ -458,6 +460,11 @@
                         <td class="text-right ${ganancia >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(ganancia)}</td>
                         <td>${metodoPago}</td>
                         <td>${renderBadgeEstado(estado)}</td>
+                        <td>
+                            <button class="btn-app btn-app-outline btn-app-sm" onclick="abrirModalEditarVenta(${v.id})">
+                                Editar
+                            </button>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -499,6 +506,9 @@
         // ============================================================
 
         function abrirModalNuevaVenta() {
+            ventaIdEditando = null;
+document.querySelector('#modalNuevaVenta .modal-header h3').textContent = 'Nueva Venta';
+document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
             // Resetear formulario
             document.getElementById('formNuevaVenta').reset();
             document.getElementById('lineItemsBody').innerHTML = '';
@@ -521,6 +531,62 @@
 
             openModal('modalNuevaVenta');
         }
+        async function abrirModalEditarVenta(id) {
+    const venta = ventas.find(v => v.id === id);
+
+    if (!venta) {
+        showToast('No se encontró la venta seleccionada', 'error');
+        return;
+    }
+
+    ventaIdEditando = id;
+
+    document.querySelector('#modalNuevaVenta .modal-header h3').textContent = 'Editar Venta';
+    document.getElementById('btnGuardarVenta').textContent = 'Actualizar Venta';
+
+    document.getElementById('formNuevaVenta').reset();
+    document.getElementById('lineItemsBody').innerHTML = '';
+    document.getElementById('ventaDescuento').value = Number(venta.descuento || 0);
+    document.getElementById('ventaObservaciones').value = venta.observaciones || '';
+    document.getElementById('ventaMetodoPago').value = venta.metodoPago || '';
+
+    const selectCliente = document.getElementById('ventaCliente');
+    selectCliente.innerHTML = '<option value="">Seleccionar cliente...</option>';
+    clientes.forEach(c => {
+        const idCliente = c.id;
+        const nombre = c.nombre || `Cliente #${idCliente}`;
+        selectCliente.innerHTML += `<option value="${idCliente}">${escapeHtml(nombre)}</option>`;
+    });
+    selectCliente.value = venta.cliente ? venta.cliente.id : '';
+
+    lineaCounter = 0;
+
+    try {
+        const detalles = await ApiClient.listarDetalleVenta(id);
+
+        if (Array.isArray(detalles) && detalles.length > 0) {
+            detalles.forEach(detalle => {
+                agregarLineaProducto();
+
+                const lineId = lineaCounter;
+                document.getElementById(`prod_${lineId}`).value = detalle.producto ? detalle.producto.id : '';
+                document.getElementById(`cant_${lineId}`).value = detalle.cantidad || 1;
+                document.getElementById(`precio_${lineId}`).value = Number(detalle.precioUnitario || 0);
+
+                recalcularLinea(lineId);
+            });
+        } else {
+            agregarLineaProducto();
+        }
+
+        recalcularTotales();
+        openModal('modalNuevaVenta');
+
+    } catch (err) {
+        console.error('Error cargando detalle de venta:', err);
+        showToast('Error al cargar los productos de la venta', 'error');
+    }
+}
 
         function cerrarModalVenta() {
             closeModal('modalNuevaVenta');
@@ -678,10 +744,17 @@
             btnGuardar.textContent = 'Registrando...';
 
             try {
-                await ApiClient.registrarVenta(ventaData);
-                showToast('Venta registrada exitosamente', 'success');
-                cerrarModalVenta();
-                await cargarDatos();
+                if (ventaIdEditando) {
+    await ApiClient.actualizarVenta(ventaIdEditando, ventaData);
+    showToast('Venta actualizada exitosamente', 'success');
+} else {
+    await ApiClient.registrarVenta(ventaData);
+    showToast('Venta registrada exitosamente', 'success');
+}
+
+ventaIdEditando = null;
+cerrarModalVenta();
+await cargarDatos();
             } catch (err) {
                 console.error('Error registrando venta:', err);
                 showToast(err.message || 'Error al registrar la venta', 'error');
