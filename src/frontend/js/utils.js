@@ -110,7 +110,7 @@ function renderSidebar(activePage) {
     <aside class="sidebar" id="sidebar">
         <!-- Brand -->
         <div class="sidebar-brand">
-            <img src="../img/Logo.png" alt="EMPLANORTE" class="brand-icon">
+            <img src="../img/Circulo.png" alt="EMPLANORTE" class="brand-icon">
             <span class="brand-name">EMPLANORTE</span>
         </div>
 
