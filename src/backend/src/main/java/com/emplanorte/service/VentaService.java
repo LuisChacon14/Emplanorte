@@ -1,17 +1,26 @@
 package com.emplanorte.service;
 
-import com.emplanorte.dto.ItemVentaRequest;
-import com.emplanorte.dto.VentaRequest;
-import com.emplanorte.model.*;
-import com.emplanorte.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.emplanorte.dto.ItemVentaRequest;
+import com.emplanorte.dto.VentaRequest;
+import com.emplanorte.model.Cliente;
+import com.emplanorte.model.DetalleVenta;
+import com.emplanorte.model.Producto;
+import com.emplanorte.model.Usuario;
+import com.emplanorte.model.Venta;
+import com.emplanorte.repository.ClienteRepository;
+import com.emplanorte.repository.DetalleVentaRepository;
+import com.emplanorte.repository.ProductoRepository;
+import com.emplanorte.repository.UsuarioRepository;
+import com.emplanorte.repository.VentaRepository;
 
 @Service
 public class VentaService {
@@ -146,4 +155,10 @@ public class VentaService {
 
         return ventaGuardada;
     }
+    public List<DetalleVenta> obtenerDetalles(Long ventaId) {
+    ventaRepository.findById(ventaId)
+            .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
+
+    return detalleVentaRepository.findByVentaId(ventaId);
+}
 }
