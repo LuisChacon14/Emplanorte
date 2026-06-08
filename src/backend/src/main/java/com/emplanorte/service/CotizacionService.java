@@ -1,17 +1,30 @@
 package com.emplanorte.service;
 
-import com.emplanorte.dto.ItemCotizacionRequest;
-import com.emplanorte.dto.CotizacionRequest;
-import com.emplanorte.model.*;
-import com.emplanorte.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.emplanorte.dto.CotizacionRequest;
+import com.emplanorte.dto.ItemCotizacionRequest;
+import com.emplanorte.model.Cliente;
+import com.emplanorte.model.Cotizacion;
+import com.emplanorte.model.DetalleCotizacion;
+import com.emplanorte.model.DetalleVenta;
+import com.emplanorte.model.Producto;
+import com.emplanorte.model.Usuario;
+import com.emplanorte.model.Venta;
+import com.emplanorte.repository.ClienteRepository;
+import com.emplanorte.repository.CotizacionRepository;
+import com.emplanorte.repository.DetalleCotizacionRepository;
+import com.emplanorte.repository.DetalleVentaRepository;
+import com.emplanorte.repository.ProductoRepository;
+import com.emplanorte.repository.UsuarioRepository;
+import com.emplanorte.repository.VentaRepository;
 
 @Service
 public class CotizacionService {
@@ -40,6 +53,12 @@ public class CotizacionService {
     public List<Cotizacion> obtenerTodas() {
         return cotizacionRepository.findAll();
     }
+    public List<DetalleCotizacion> obtenerDetalles(Long cotizacionId) {
+    cotizacionRepository.findById(cotizacionId)
+            .orElseThrow(() -> new RuntimeException("Cotización no encontrada"));
+
+    return detalleCotizacionRepository.findByCotizacionId(cotizacionId);
+}
 
     @Transactional
     public void eliminarCotizacion(Long id) {
@@ -91,7 +110,9 @@ public class CotizacionService {
             }
 
             BigDecimal cantidadBD = new BigDecimal(item.getCantidad());
-            BigDecimal precioUnitario = producto.getPrecioVenta();
+            BigDecimal precioUnitario = item.getPrecioUnitario() != null
+        ? item.getPrecioUnitario()
+        : producto.getPrecioVenta();
             BigDecimal subtotalLinea = precioUnitario.multiply(cantidadBD);
 
             subtotalAcumulado = subtotalAcumulado.add(subtotalLinea);
@@ -118,6 +139,64 @@ public class CotizacionService {
 
         return cotizacionGuardada;
     }
+    @Transactional
+public Cotizacion actualizarCotizacion(Long id, CotizacionRequest request) {
+    Cotizacion cotizacion = cotizacionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Cotización no encontrada"));
+
+    if ("convertida".equals(cotizacion.getEstado())) {
+        throw new RuntimeException("No se puede editar una cotización convertida a venta");
+    }
+
+    Cliente cliente = clienteRepository.findById(request.getIdCliente())
+            .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+
+    if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
+        throw new RuntimeException("Debe agregar al menos un producto a la cotización");
+    }
+
+    cotizacion.setCliente(cliente);
+    cotizacion.setDescuento(request.getDescuento() != null ? request.getDescuento() : BigDecimal.ZERO);
+    cotizacion.setNotas(request.getNotas());
+
+    detalleCotizacionRepository.deleteByCotizacionId(id);
+
+    BigDecimal subtotalAcumulado = BigDecimal.ZERO;
+
+    for (ItemCotizacionRequest item : request.getDetalles()) {
+        Producto producto = productoRepository.findById(item.getIdProducto())
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        if (producto.getStockDisponible() < item.getCantidad()) {
+            throw new RuntimeException("Stock insuficiente para \"" + producto.getNombre()
+                    + "\". Disponible: " + producto.getStockDisponible()
+                    + ", solicitado: " + item.getCantidad());
+        }
+
+        BigDecimal cantidadBD = new BigDecimal(item.getCantidad());
+        BigDecimal precioUnitario = item.getPrecioUnitario() != null
+                ? item.getPrecioUnitario()
+                : producto.getPrecioVenta();
+
+        BigDecimal subtotalLinea = precioUnitario.multiply(cantidadBD);
+        subtotalAcumulado = subtotalAcumulado.add(subtotalLinea);
+
+        DetalleCotizacion detalle = new DetalleCotizacion();
+        detalle.setCotizacion(cotizacion);
+        detalle.setProducto(producto);
+        detalle.setCantidad(item.getCantidad());
+        detalle.setPrecioUnitario(precioUnitario);
+        detalle.setSubtotalLinea(subtotalLinea);
+
+        detalleCotizacionRepository.save(detalle);
+    }
+
+    cotizacion.setSubtotal(subtotalAcumulado);
+    BigDecimal total = subtotalAcumulado.subtract(cotizacion.getDescuento());
+    cotizacion.setTotal(total.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : total);
+
+    return cotizacionRepository.save(cotizacion);
+}
 
     @Transactional
     public Venta convertirAVenta(Long cotizacionId, String metodoPago) {
