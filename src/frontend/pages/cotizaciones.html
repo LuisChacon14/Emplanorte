@@ -334,6 +334,7 @@
         let clientes = [];
         let productos = [];
         let cotizacionIdConvertir = null;
+        let cotizacionIdEditando = null;
         let lineaCounter = 0;
 
         // ---- Inicialización ----
@@ -406,10 +407,13 @@
                         <td>
                             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                                 ${puedeConvertir
-                                    ? `<button class="btn-app btn-app-success btn-app-sm btn-convertir" onclick="abrirModalConvertir(${c.id})">
-                                           Convertir a Venta
-                                       </button>`
-                                    : ''}
+    ? `<button class="btn-app btn-app-outline btn-app-sm" onclick="abrirModalEditar(${c.id})">
+           Editar
+       </button>
+       <button class="btn-app btn-app-success btn-app-sm btn-convertir" onclick="abrirModalConvertir(${c.id})">
+           Convertir a Venta
+       </button>`
+    : ''}
                                 ${c.estado !== 'convertida'
                                     ? `<button class="btn-app btn-app-danger btn-app-sm" onclick="confirmarEliminar(${c.id}, '${escapeHtml(String(numCotizacion))}')">
                                            Eliminar
@@ -460,12 +464,66 @@
 
         // ---- MODAL: Nueva Cotización ----
         function abrirModalNueva() {
-            resetFormCotizacion();
+    cotizacionIdEditando = null;
+    document.querySelector('#modalNuevaCotizacion .modal-header h3').textContent = 'Nueva Cotización';
+    document.getElementById('btnGuardarCotizacion').textContent = 'Guardar Cotización';
+
+    resetFormCotizacion();
+    agregarLineaProducto();
+    openModal('modalNuevaCotizacion');
+}
+async function abrirModalEditar(id) {
+    const cotizacion = cotizaciones.find(c => c.id === id);
+
+    if (!cotizacion) {
+        showToast('No se encontró la cotización seleccionada', 'error');
+        return;
+    }
+
+    if (cotizacion.estado === 'convertida') {
+        showToast('No se puede editar una cotización convertida a venta', 'warning');
+        return;
+    }
+
+    document.querySelector('#modalNuevaCotizacion .modal-header h3').textContent = 'Editar Cotización';
+    document.getElementById('btnGuardarCotizacion').textContent = 'Actualizar Cotización';
+
+    resetFormCotizacion();
+
+    cotizacionIdEditando = id;
+
+    document.getElementById('selectCliente').value = cotizacion.cliente ? cotizacion.cliente.id : '';
+    document.getElementById('inputNotas').value = cotizacion.notas || '';
+    document.getElementById('inputDescuento').value = Number(cotizacion.descuento || 0);
+
+    try {
+        const detalles = await ApiClient.listarDetalleCotizacion(id);
+
+        if (Array.isArray(detalles) && detalles.length > 0) {
+            detalles.forEach(detalle => {
+                agregarLineaProducto();
+
+                const row = document.getElementById(`line-${lineaCounter}`);
+                row.querySelector('.line-producto').value = detalle.producto ? detalle.producto.id : '';
+                row.querySelector('.line-cantidad').value = detalle.cantidad || 1;
+                row.querySelector('.line-precio').value = Number(detalle.precioUnitario || 0);
+
+                onCantidadChange(row.id);
+            });
+        } else {
             agregarLineaProducto();
-            openModal('modalNuevaCotizacion');
         }
 
+        recalcularTotales();
+        openModal('modalNuevaCotizacion');
+    } catch (err) {
+        console.error('Error cargando detalle de cotización:', err);
+        showToast('Error al cargar los productos de la cotización', 'error');
+    }
+}
+
         function cerrarModalNueva() {
+            cotizacionIdEditando = null;
             closeModal('modalNuevaCotizacion');
         }
 
@@ -501,7 +559,8 @@
                            oninput="onCantidadChange('${rowId}')" required>
                 </td>
                 <td>
-                    <input type="number" class="line-precio" value="0" min="0" step="0.01" readonly>
+                   <input type="number" class="line-precio" value="0" min="0" step="0.01"
+       oninput="onCantidadChange('${rowId}')" required>
                 </td>
                 <td class="text-right line-subtotal-cell">$ 0</td>
                 <td class="text-center">
@@ -605,11 +664,11 @@
             btn.textContent = 'Guardando...';
 
             try {
-                await ApiClient.crearCotizacion(data);
-                showToast('Cotización creada exitosamente', 'success');
-                cerrarModalNueva();
-                await cargarDatos();
-            } catch (err) {
+    await ApiClient.crearCotizacion(data);
+    showToast('Cotización creada exitosamente', 'success');
+    cerrarModalNueva();
+    await cargarDatos();
+} catch (err) {
                 console.error('Error al crear cotización:', err);
                 showToast(err.message || 'Error al crear la cotización', 'error');
             } finally {

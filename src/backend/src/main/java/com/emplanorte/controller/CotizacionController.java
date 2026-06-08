@@ -23,6 +23,24 @@ public class CotizacionController {
     public ResponseEntity<List<Cotizacion>> listarCotizaciones() {
         return ResponseEntity.ok(cotizacionService.obtenerTodas());
     }
+    @GetMapping("/{id}/detalles")
+public ResponseEntity<?> listarDetallesCotizacion(@PathVariable Long id) {
+    try {
+        return ResponseEntity.ok(cotizacionService.obtenerDetalles(id));
+    } catch (RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+}
+
+@PutMapping("/{id}")
+public ResponseEntity<?> actualizarCotizacion(@PathVariable Long id, @RequestBody CotizacionRequest request) {
+    try {
+        Cotizacion cotizacion = cotizacionService.actualizarCotizacion(id, request);
+        return ResponseEntity.ok(cotizacion);
+    } catch (RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+}
 
     // RF14 - Crear cotización
     @PostMapping
