@@ -35,6 +35,10 @@ public class GastoController {
     public ResponseEntity<Gasto> registrarGasto(@RequestBody Gasto gasto) {
         return ResponseEntity.ok(gastoService.guardar(gasto));
     }
+    @PutMapping("/{id}")
+public ResponseEntity<Gasto> actualizarGasto(@PathVariable Long id, @RequestBody Gasto gasto) {
+    return ResponseEntity.ok(gastoService.actualizarGasto(id, gasto));
+}
 
     // RF10 - Obtener categorías de gastos
     @GetMapping("/categorias")

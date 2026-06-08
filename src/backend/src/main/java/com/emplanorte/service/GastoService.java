@@ -1,13 +1,15 @@
 package com.emplanorte.service;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.emplanorte.model.CategoriaGasto;
 import com.emplanorte.model.Gasto;
 import com.emplanorte.repository.CategoriaGastoRepository;
 import com.emplanorte.repository.GastoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.time.LocalDate;
-import java.util.List;
 
 @Service
 public class GastoService {
@@ -33,6 +35,17 @@ public class GastoService {
         }
         return gastoRepository.save(gasto);
     }
+    public Gasto actualizarGasto(Long id, Gasto gastoActualizado) {
+    Gasto gasto = gastoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Gasto no encontrado"));
+
+    gasto.setCategoria(gastoActualizado.getCategoria());
+    gasto.setDescripcion(gastoActualizado.getDescripcion());
+    gasto.setValor(gastoActualizado.getValor());
+    gasto.setFechaGasto(gastoActualizado.getFechaGasto());
+
+    return gastoRepository.save(gasto);
+}
 
     // Métodos de Categorías de Gasto (RF10)
     public List<CategoriaGasto> obtenerCategoriasActivas() {
