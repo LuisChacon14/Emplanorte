@@ -151,6 +151,12 @@ const ApiClient = {
             body: JSON.stringify(gasto)
         });
     },
+    async actualizarGasto(id, gasto) {
+    return this.request(`/gastos/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(gasto)
+    });
+},
 
     async listarCategoriasGasto() {
         return this.request('/gastos/categorias', { method: 'GET' });
@@ -176,6 +182,16 @@ const ApiClient = {
             body: JSON.stringify(ventaRequest)
         });
     },
+    async actualizarVenta(id, ventaRequest) {
+    return this.request(`/ventas/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(ventaRequest)
+    });
+},
+
+async listarDetalleVenta(id) {
+    return this.request(`/ventas/${id}/detalles`, { method: 'GET' });
+},
 
     // ==========================================
     // 6. MÓDULO COTIZACIONES (RF14)
@@ -190,6 +206,16 @@ const ApiClient = {
             body: JSON.stringify(cotizacionRequest)
         });
     },
+    async actualizarCotizacion(id, cotizacionRequest) {
+    return this.request(`/cotizaciones/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(cotizacionRequest)
+    });
+},
+
+async listarDetalleCotizacion(id) {
+    return this.request(`/cotizaciones/${id}/detalles`, { method: 'GET' });
+},
 
     async convertirCotizacionAVenta(id, metodoPago) {
         return this.request(`/cotizaciones/convertir/${id}`, {
