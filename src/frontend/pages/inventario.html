@@ -21,10 +21,13 @@
             <div class="page-header">
                 <h1 class="page-title">Inventario</h1>
                 <div class="page-actions">
-                    <button class="btn-app btn-app-primary" id="btnAgregarProducto">
-                        <span>＋</span> Agregar Producto
-                    </button>
-                </div>
+    <button class="btn-app btn-app-outline" id="btnRegistrarCategoria">
+        <span>🏷️</span> Registrar Categoría
+    </button>
+    <button class="btn-app btn-app-primary" id="btnAgregarProducto">
+        <span>＋</span> Agregar Producto
+    </button>
+</div>
             </div>
 
             <!-- Page Body -->
@@ -182,6 +185,34 @@
             </div>
         </div>
     </div>
+    <!-- Modal: Registrar Categoría -->
+<div class="modal-overlay" id="modalCategoria">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Registrar Categoría</h3>
+            <button class="modal-close" id="btnCerrarModalCategoria">&times;</button>
+        </div>
+
+        <div class="modal-body">
+            <form id="formCategoria">
+                <div class="form-group-app">
+                    <label for="nombreCategoria">Nombre de la categoría</label>
+                    <input type="text" id="nombreCategoria" placeholder="Ej: Envase PET" required>
+                </div>
+
+                <div class="form-group-app">
+                    <label for="descripcionCategoria">Descripción</label>
+                    <textarea id="descripcionCategoria" rows="3" placeholder="Descripción de la categoría"></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-app btn-app-outline" id="btnCancelarCategoria">Cancelar</button>
+            <button class="btn-app btn-app-primary" id="btnGuardarCategoria">Guardar Categoría</button>
+        </div>
+    </div>
+</div>
 
     <!-- Scripts -->
     <script src="../js/api.js"></script>
@@ -217,17 +248,20 @@
         }
 
         // ---- Poblar dropdown de filtro de categorías ----
-        function poblarFiltroCategorias() {
-            const select = document.getElementById('filterCategoria');
-            select.innerHTML = '<option value="">Todas las categorías</option>';
-            const categoriasUnicas = obtenerCategoriasUnicas();
-            categoriasUnicas.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                select.appendChild(opt);
-            });
-        }
+       function poblarFiltroCategorias() {
+    const select = document.getElementById('filterCategoria');
+    select.innerHTML = '<option value="">Todas las categorías</option>';
+
+    categorias
+        .filter(cat => cat.activo !== false)
+        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+        .forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.nombre;
+            opt.textContent = cat.nombre;
+            select.appendChild(opt);
+        });
+}
 
         // ---- Poblar select de categoría en el modal ----
         function poblarSelectCategoriaModal() {
@@ -263,19 +297,62 @@
         }
 
         // ---- Obtener productos filtrados ----
-        function obtenerProductosFiltrados() {
-            const busqueda = document.getElementById('searchInput').value.toLowerCase().trim();
-            const catFiltro = document.getElementById('filterCategoria').value;
+function obtenerProductosFiltrados() {
+    const busqueda = document.getElementById('searchInput').value.toLowerCase().trim();
+    const catFiltro = document.getElementById('filterCategoria').value;
 
-            return productos.filter(p => {
-                const coincideBusqueda = !busqueda ||
-                    (p.nombre || '').toLowerCase().includes(busqueda) ||
-                    (p.codigo || '').toLowerCase().includes(busqueda);
-                const catNombre = p.categoria ? p.categoria.nombre : '';
-                const coincideCategoria = !catFiltro || catNombre === catFiltro;
-                return coincideBusqueda && coincideCategoria;
-            });
-        }
+    return productos
+        .filter(p => {
+            const coincideBusqueda = !busqueda ||
+                (p.nombre || '').toLowerCase().includes(busqueda) ||
+                (p.codigo || '').toLowerCase().includes(busqueda);
+
+            const catNombre = p.categoria ? p.categoria.nombre : '';
+            const coincideCategoria = !catFiltro || catNombre === catFiltro;
+
+            return coincideBusqueda && coincideCategoria;
+        })
+        .sort((a, b) => {
+            const capacidadA = obtenerCapacidadOrden(a);
+            const capacidadB = obtenerCapacidadOrden(b);
+
+            if (capacidadA !== capacidadB) {
+                return capacidadA - capacidadB;
+            }
+
+            return (a.nombre || '').localeCompare(b.nombre || '');
+        });
+}
+function obtenerCapacidadOrden(producto) {
+    if (producto.capacidadMl !== null && producto.capacidadMl !== undefined) {
+        return Number(producto.capacidadMl);
+    }
+
+    const nombre = (producto.nombre || '').toLowerCase();
+
+    const coincidencia = nombre.match(/(\d+(?:[.,]\d+)?)\s*(ml|mililitros|l|lt|litro|litros|gal|galon|galón|galones)/i);
+
+    if (!coincidencia) {
+        return 999999;
+    }
+
+    const valor = Number(coincidencia[1].replace(',', '.'));
+    const unidad = coincidencia[2].toLowerCase();
+
+    if (unidad === 'ml' || unidad === 'mililitros') {
+        return valor;
+    }
+
+    if (unidad === 'l' || unidad === 'lt' || unidad === 'litro' || unidad === 'litros') {
+        return valor * 1000;
+    }
+
+    if (unidad === 'gal' || unidad === 'galon' || unidad === 'galón' || unidad === 'galones') {
+        return valor * 3785;
+    }
+
+    return 999999;
+}
 
         // ---- Renderizar tabla de productos ----
         function renderizarTabla() {
@@ -432,10 +509,67 @@
             editandoId = null;
             resetForm('formProducto');
         }
+function abrirModalCategoria() {
+    resetForm('formCategoria');
+    openModal('modalCategoria');
+}
 
+function cerrarModalCategoria() {
+    closeModal('modalCategoria');
+    resetForm('formCategoria');
+}
+
+async function guardarCategoria() {
+    const form = document.getElementById('formCategoria');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const datos = {
+        nombre: document.getElementById('nombreCategoria').value.trim(),
+        descripcion: document.getElementById('descripcionCategoria').value.trim(),
+        activo: true
+    };
+
+    const btnGuardar = document.getElementById('btnGuardarCategoria');
+    btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando...';
+
+    try {
+        await ApiClient.request('/categorias-producto', {
+            method: 'POST',
+            body: JSON.stringify(datos)
+        });
+
+        showToast('Categoría registrada correctamente', 'success');
+        cerrarModalCategoria();
+        await cargarDatos();
+    } catch (err) {
+        console.error('Error al guardar categoría:', err);
+        showToast(err.message || 'Error al registrar la categoría', 'error');
+    } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = 'Guardar Categoría';
+    }
+}
         // ---- Event Listeners ----
         document.getElementById('btnAgregarProducto').addEventListener('click', abrirModalAgregar);
         document.getElementById('btnEmptyAdd').addEventListener('click', abrirModalAgregar);
+        document.getElementById('btnRegistrarCategoria').addEventListener('click', abrirModalCategoria);
+        document.getElementById('btnCerrarModalCategoria').addEventListener('click', cerrarModalCategoria);
+        document.getElementById('btnCancelarCategoria').addEventListener('click', cerrarModalCategoria);
+        document.getElementById('btnGuardarCategoria').addEventListener('click', guardarCategoria);
+
+        document.getElementById('formCategoria').addEventListener('submit', (e) => {
+    e.preventDefault();
+    guardarCategoria();
+});
+
+document.getElementById('modalCategoria').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) cerrarModalCategoria();
+});
         document.getElementById('btnCerrarModal').addEventListener('click', cerrarModal);
         document.getElementById('btnCancelar').addEventListener('click', cerrarModal);
         document.getElementById('modalProducto').addEventListener('click', (e) => {
