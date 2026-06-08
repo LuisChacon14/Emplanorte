@@ -83,27 +83,32 @@ a { text-decoration: none; color: inherit; }
 
 /* Logo / Branding */
 .sidebar-brand {
-    padding: 20px 16px;
+    padding: 18px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     border-bottom: 1px solid var(--sidebar-border);
 }
 
 .sidebar-brand .brand-icon {
-    width: 40px;
-    height: 40px;
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 4px;
+    width: 42px;
+    height: 42px;
+    background: transparent;
+    border-radius: 50%;
+    padding: 0;
     object-fit: contain;
     flex-shrink: 0;
     display: block;
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.16));
+    transition: transform 0.25s ease;
+}
+.sidebar-brand .brand-icon:hover {
+    transform: scale(1.08);
 }
 
 .sidebar-brand .brand-name {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 800;
     color: #ffffff;
     letter-spacing: -0.3px;
 }
