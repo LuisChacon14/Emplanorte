@@ -156,6 +156,7 @@
                                 <th>Descripción</th>
                                 <th>Valor</th>
                                 <th>Registrado por</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="gastosBody">
@@ -242,6 +243,7 @@
         // ---- State ----
         let gastosList = [];
         let categoriasList = [];
+        let gastoIdEditando = null;
 
         // ---- DOM References ----
         const gastosBody = document.getElementById('gastosBody');
@@ -328,6 +330,11 @@
                         <td>${g.descripcion || '-'}</td>
                         <td class="fw-bold text-danger">${formatCurrency(g.valor)}</td>
                         <td>${registradoPor}</td>
+                        <td>
+                            <button class="btn-app btn-app-outline btn-app-sm" onclick="editarGasto(${g.id})">
+                                Editar
+                            </button>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -416,8 +423,33 @@
         // REGISTER EXPENSE (Modal)
         // =============================================
         function openModalRegistrarGasto() {
+            gastoIdEditando = null;
+
+            document.querySelector('#modalRegistrarGasto .modal-header h3').textContent = 'Registrar Gasto';
+            document.getElementById('btnGuardarGasto').textContent = '💾 Guardar Gasto';
+
             resetForm('formRegistrarGasto');
             gastoFechaInput.value = todayISO();
+            openModal('modalRegistrarGasto');
+        }
+        function editarGasto(id) {
+            const gasto = gastosList.find(g => g.id === id);
+
+            if (!gasto) {
+                showToast('No se encontró el gasto seleccionado', 'error');
+                return;
+            }
+
+            gastoIdEditando = id;
+
+            document.querySelector('#modalRegistrarGasto .modal-header h3').textContent = 'Editar Gasto';
+            document.getElementById('btnGuardarGasto').textContent = 'Actualizar Gasto';
+
+            document.getElementById('gastoCategoria').value = gasto.categoria ? gasto.categoria.id : '';
+            document.getElementById('gastoDescripcion').value = gasto.descripcion || '';
+            document.getElementById('gastoValor').value = Number(gasto.valor || 0);
+            document.getElementById('gastoFecha').value = gasto.fechaGasto || todayISO();
+
             openModal('modalRegistrarGasto');
         }
 
@@ -452,15 +484,23 @@
             btnGuardar.textContent = 'Guardando...';
 
             try {
-                await ApiClient.registrarGasto({
-                    categoria: { id: idCategoria },
-                    usuario: { id: user ? user.id : null },
-                    descripcion,
-                    valor,
-                    fechaGasto
-                });
+                const gastoData = {
+    categoria: { id: idCategoria },
+    usuario: { id: user ? user.id : null },
+    descripcion,
+    valor,
+    fechaGasto
+};
 
-                showToast('Gasto registrado exitosamente', 'success');
+if (gastoIdEditando) {
+    await ApiClient.actualizarGasto(gastoIdEditando, gastoData);
+    showToast('Gasto actualizado exitosamente', 'success');
+} else {
+    await ApiClient.registrarGasto(gastoData);
+    showToast('Gasto registrado exitosamente', 'success');
+}
+
+gastoIdEditando = null;
                 closeModal('modalRegistrarGasto');
                 resetForm('formRegistrarGasto');
 
