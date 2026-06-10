@@ -215,10 +215,10 @@ class ClienteServiceTest {
         Cliente sinNombre = new Cliente();
         sinNombre.setNombre("");
         sinNombre.setTelefono("3001234567");
-        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> clienteService.guardar(sinNombre))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("nombre");
     }
 
     @Test
@@ -227,10 +227,10 @@ class ClienteServiceTest {
         Cliente sinNombre = new Cliente();
         sinNombre.setNombre(null);
         sinNombre.setTelefono("3001234567");
-        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> clienteService.guardar(sinNombre))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("nombre");
     }
 
     @Test
@@ -239,9 +239,9 @@ class ClienteServiceTest {
         Cliente telMalo = new Cliente();
         telMalo.setNombre("Cliente Y");
         telMalo.setTelefono("abc123");
-        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> clienteService.guardar(telMalo))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("formato");
     }
 }

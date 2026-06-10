@@ -103,11 +103,9 @@ public class CotizacionService {
             Producto producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-            if (producto.getStockDisponible() < item.getCantidad()) {
-                throw new RuntimeException("Stock insuficiente para \"" + producto.getNombre()
-                        + "\". Disponible: " + producto.getStockDisponible()
-                        + ", solicitado: " + item.getCantidad());
-            }
+            // CP-44 - La cotización es una propuesta comercial: NO descuenta ni valida
+            // el inventario. Se permiten cantidades mayores al stock disponible.
+            // El stock solo se valida al CONVERTIR la cotización en venta.
 
             BigDecimal cantidadBD = new BigDecimal(item.getCantidad());
             BigDecimal precioUnitario = item.getPrecioUnitario() != null
