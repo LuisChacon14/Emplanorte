@@ -168,4 +168,58 @@ class DashboardServiceTest {
         assertThat(resp.getGananciasVentas()).isNotNull();
         assertThat(resp.getGananciaNetaReal()).isNotNull();
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("Solo 'desde' nula — se usa hoy como inicio y se respeta el 'hasta' indicado")
+    void obtenerResumen_soloDesdeNula_usaHoyComoInicio() {
+        LocalDate hasta = LocalDate.of(2026, 5, 31);
+        stubRepositorios(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+
+        dashboardService.obtenerResumenFinanciero(null, hasta);
+
+        LocalDateTime hoyInicio = LocalDate.now().atStartOfDay();
+        LocalDateTime hastaFin  = hasta.atTime(LocalTime.MAX);
+        verify(ventaRepository).obtenerTotalVentasPorRango(eq(hoyInicio), eq(hastaFin), eq("completada"));
+    }
+
+    @Test
+    @DisplayName("Solo 'hasta' nula — se usa hoy como fin y se respeta el 'desde' indicado")
+    void obtenerResumen_soloHastaNula_usaHoyComoFin() {
+        LocalDate desde = LocalDate.of(2026, 5, 1);
+        stubRepositorios(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+
+        dashboardService.obtenerResumenFinanciero(desde, null);
+
+        LocalDateTime desdeInicio = desde.atStartOfDay();
+        LocalDateTime hoyFin      = LocalDate.now().atTime(LocalTime.MAX);
+        verify(ventaRepository).obtenerTotalVentasPorRango(eq(desdeInicio), eq(hoyFin), eq("completada"));
+    }
+
+    @Test
+    @DisplayName("La ganancia neta se basa en la GANANCIA de ventas, no en el total facturado")
+    void obtenerResumen_gananciaNetaUsaGananciaNoTotalVentas() {
+        // total facturado alto (1.000.000) pero ganancia real baja (100.000)
+        stubRepositorios(new BigDecimal("1000000"), new BigDecimal("100000"), new BigDecimal("40000"));
+
+        DashboardResponse resp = dashboardService.obtenerResumenFinanciero(
+                LocalDate.now(), LocalDate.now());
+
+        // neta = 100.000 - 40.000 = 60.000  (NO 1.000.000 - 40.000)
+        assertThat(resp.getGananciaNetaReal()).isEqualByComparingTo(new BigDecimal("60000"));
+    }
+
+    @Test
+    @DisplayName("Totales con decimales — se conservan sin pérdida de precisión")
+    void obtenerResumen_decimales_sinPerdidaDePrecision() {
+        stubRepositorios(new BigDecimal("125000.75"), new BigDecimal("50000.25"), new BigDecimal("10000.10"));
+
+        DashboardResponse resp = dashboardService.obtenerResumenFinanciero(
+                LocalDate.now(), LocalDate.now());
+
+        assertThat(resp.getGananciaNetaReal()).isEqualByComparingTo(new BigDecimal("40000.15"));
+    }
 }

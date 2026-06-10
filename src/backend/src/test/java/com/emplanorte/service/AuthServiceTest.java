@@ -198,4 +198,44 @@ class AuthServiceTest {
         Optional<Usuario> resultado = authService.login(null, "Admin2024*");
         assertThat(resultado).isEmpty();
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("Correo vacío \"\" — el servicio no valida formato, solo busca y devuelve vacío")
+    void login_correoVacio_retornaVacio() {
+        when(usuarioRepository.findByCorreo("")).thenReturn(Optional.empty());
+
+        Optional<Usuario> resultado = authService.login("", "Admin2024*");
+
+        assertThat(resultado).isEmpty();
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("Correo en otro case (MAYÚSCULAS) — la búsqueda es exacta; si el repo no lo halla, vacío")
+    void login_correoOtroCase_dependeDelRepositorio() {
+        when(usuarioRepository.findByCorreo("DUVAN@EMPLANORTE.COM")).thenReturn(Optional.empty());
+
+        Optional<Usuario> resultado = authService.login("DUVAN@EMPLANORTE.COM", "Admin2024*");
+
+        assertThat(resultado).isEmpty();
+        verify(usuarioRepository).findByCorreo("DUVAN@EMPLANORTE.COM");
+    }
+
+    @Test
+    @DisplayName("Login exitoso — devuelve exactamente el mismo usuario (id y correo) que está en BD")
+    void login_exitoso_devuelveMismoUsuario() {
+        when(usuarioRepository.findByCorreo("duvan@emplanorte.com"))
+                .thenReturn(Optional.of(usuarioActivo));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+
+        Optional<Usuario> resultado = authService.login("duvan@emplanorte.com", "Admin2024*");
+
+        assertThat(resultado).contains(usuarioActivo);
+        assertThat(resultado.get().getId()).isEqualTo(1L);
+        assertThat(resultado.get().getCorreo()).isEqualTo("duvan@emplanorte.com");
+    }
 }

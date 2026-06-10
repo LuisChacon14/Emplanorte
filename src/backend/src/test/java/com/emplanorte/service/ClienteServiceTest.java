@@ -167,4 +167,81 @@ class ClienteServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Cliente");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ── Comportamiento real adicional (deben PASAR) ──────────────────────────
+
+    @Test
+    @DisplayName("guardar fuerza activo=true aunque el cliente llegue con activo=false")
+    void guardar_forzaActivoTrue() {
+        Cliente nuevo = new Cliente();
+        nuevo.setNombre("Cliente X");
+        nuevo.setTelefono("3001112233");
+        nuevo.setActivo(false);
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Cliente resultado = clienteService.guardar(nuevo);
+
+        assertThat(resultado.getActivo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("actualizar inexistente — mensaje EXACTO 'Cliente no encontrado'")
+    void actualizar_inexistente_mensajeExacto() {
+        when(clienteRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> clienteService.actualizar(99L, clienteBase))
+                .hasMessage("Cliente no encontrado");
+    }
+
+    @Test
+    @DisplayName("desactivar inexistente — mensaje EXACTO 'Cliente no encontrado'")
+    void desactivar_inexistente_mensajeExacto() {
+        when(clienteRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> clienteService.desactivar(99L))
+                .hasMessage("Cliente no encontrado");
+    }
+
+    // ── [GAP] Validaciones del Plan NO implementadas (se esperan en ROJO) ─────
+    //    ClienteService.guardar() solo fuerza activo=true; no valida nombre ni teléfono.
+
+    @Test
+    @DisplayName("[GAP] CP-40: cliente sin nombre (\"\") debería rechazarse (hoy se acepta)")
+    void guardar_nombreVacio_deberiaRechazar() {
+        Cliente sinNombre = new Cliente();
+        sinNombre.setNombre("");
+        sinNombre.setTelefono("3001234567");
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> clienteService.guardar(sinNombre))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-40b: cliente con nombre null debería rechazarse (hoy se acepta)")
+    void guardar_nombreNull_deberiaRechazar() {
+        Cliente sinNombre = new Cliente();
+        sinNombre.setNombre(null);
+        sinNombre.setTelefono("3001234567");
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> clienteService.guardar(sinNombre))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-41: teléfono con formato inválido (\"abc123\") debería rechazarse (hoy se acepta)")
+    void guardar_telefonoInvalido_deberiaRechazar() {
+        Cliente telMalo = new Cliente();
+        telMalo.setNombre("Cliente Y");
+        telMalo.setTelefono("abc123");
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> clienteService.guardar(telMalo))
+                .isInstanceOf(RuntimeException.class);
+    }
 }

@@ -283,4 +283,166 @@ class ProductoServiceTest {
         Sort.Order orden = captor.getValue().getOrderFor("categoria.nombre");
         assertThat(orden).isNotNull();
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ── Comportamiento real adicional (deben PASAR) ──────────────────────────
+
+    @Test
+    @DisplayName("guardar fuerza activo=true aunque el producto llegue con activo=false")
+    void guardar_forzaActivoTrue() {
+        productoBase.setActivo(false);
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Producto r = productoService.guardar(productoBase);
+
+        assertThat(r.getActivo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("guardar acepta stock CERO — decisión de diseño: producto agotado sigue siendo válido")
+    void guardar_stockCero_seAcepta() {
+        productoBase.setStockDisponible(0);
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Producto r = productoService.guardar(productoBase);
+
+        assertThat(r.getStockDisponible()).isZero();
+        assertThat(r.getActivo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("actualizar inexistente — mensaje EXACTO 'Producto no encontrado con el ID: 99'")
+    void actualizar_inexistente_mensajeExacto() {
+        when(productoRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> productoService.actualizar(99L, productoBase))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Producto no encontrado con el ID: 99");
+    }
+
+    @Test
+    @DisplayName("desactivar inexistente — mensaje EXACTO 'Producto no encontrado con el ID: 99'")
+    void desactivar_inexistente_mensajeExacto() {
+        when(productoRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> productoService.desactivar(99L))
+                .hasMessage("Producto no encontrado con el ID: 99");
+    }
+
+    @Test
+    @DisplayName("ordenar con criterio desconocido 'xyz' — usa orden por defecto sin error")
+    void ordenar_criterioDesconocido_usaDefault() {
+        when(productoRepository.findAll(any(Sort.class))).thenReturn(List.of(productoBase));
+
+        assertThatCode(() -> productoService.obtenerTodosActivosOrdenados("xyz"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("ordenar por alias 'cantidad' — equivale a ordenar por stockDisponible")
+    void ordenar_aliasCantidad_usaStock() {
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        when(productoRepository.findAll(captor.capture())).thenReturn(List.of(productoBase));
+
+        productoService.obtenerTodosActivosOrdenados("cantidad");
+
+        assertThat(captor.getValue().getOrderFor("stockDisponible")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("ordenar con criterio en MAYÚSCULAS 'NOMBRE' — es case-insensitive")
+    void ordenar_criterioMayusculas_caseInsensitive() {
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        when(productoRepository.findAll(captor.capture())).thenReturn(List.of(productoBase));
+
+        productoService.obtenerTodosActivosOrdenados("NOMBRE");
+
+        assertThat(captor.getValue().getOrderFor("nombre")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("listar activos sin productos — retorna lista vacía sin error")
+    void listarActivos_vacio_sinError() {
+        when(productoRepository.findByActivoTrue()).thenReturn(Collections.emptyList());
+
+        assertThat(productoService.obtenerTodosActivos()).isEmpty();
+    }
+
+    // ── [GAP] Validaciones del Plan NO implementadas (se esperan en ROJO) ─────
+    //    ProductoService.guardar() no valida nada: solo fuerza activo=true y
+    //    persiste. Las siguientes pruebas codifican lo que el Plan exige.
+
+    @Test
+    @DisplayName("[GAP] CP-02: nombre vacío \"\" debería rechazarse (hoy guardar lo acepta)")
+    void guardar_nombreVacio_deberiaRechazar() {
+        productoBase.setNombre("");
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-02b: nombre null debería rechazarse (hoy guardar lo acepta)")
+    void guardar_nombreNull_deberiaRechazar() {
+        productoBase.setNombre(null);
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-02c: nombre solo espacios \"   \" debería rechazarse (trim)")
+    void guardar_nombreSoloEspacios_deberiaRechazar() {
+        productoBase.setNombre("   ");
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-03: stock negativo (-10) debería rechazarse (hoy se acepta)")
+    void guardar_stockNegativo_deberiaRechazar() {
+        productoBase.setStockDisponible(-10);
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] Partición precio negativo (-1000) debería rechazarse (hoy se acepta)")
+    void guardar_precioNegativo_deberiaRechazar() {
+        productoBase.setPrecioVenta(new BigDecimal("-1000"));
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] Partición precio cero debería rechazarse (no se regalan productos)")
+    void guardar_precioCero_deberiaRechazar() {
+        productoBase.setPrecioVenta(BigDecimal.ZERO);
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> productoService.guardar(productoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-04: nombre duplicado debería alertar/rechazar (hoy permite duplicado silencioso)")
+    void guardar_nombreDuplicado_deberiaRechazar() {
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+        Producto duplicado = new Producto();
+        duplicado.setNombre("Botella PET 500ml"); // mismo nombre que productoBase
+
+        assertThatThrownBy(() -> productoService.guardar(duplicado))
+                .isInstanceOf(RuntimeException.class);
+    }
 }

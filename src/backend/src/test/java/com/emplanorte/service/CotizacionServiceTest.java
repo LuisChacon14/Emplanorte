@@ -304,4 +304,38 @@ class CotizacionServiceTest {
         assertThatThrownBy(() -> cotizacionService.convertirAVenta(99L, "efectivo"))
                 .isInstanceOf(RuntimeException.class);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("registrarCotizacion con producto inexistente — RuntimeException 'Producto no encontrado'")
+    void registrarCotizacion_productoNoExiste_lanzaExcepcion() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
+        when(productoRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                cotizacionService.registrarCotizacion(buildRequest(List.of(new ItemCotizacionRequest(99L, 1)))))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Producto");
+    }
+
+    @Test
+    @DisplayName("DOC del comportamiento ACTUAL: hoy cotizar 50 con stock 3 lanza 'Stock insuficiente' "
+            + "(esto es lo que CP-44 considera un defecto)")
+    void registrarCotizacion_cantidadMayorAlStock_comportamientoActual_lanzaStockInsuficiente() {
+        producto.setStockDisponible(3);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+
+        // Documenta la respuesta REAL de hoy. La prueba CP-44 (que espera lo contrario)
+        // queda en ROJO a propósito como evidencia del gap.
+        assertThatThrownBy(() ->
+                cotizacionService.registrarCotizacion(buildRequest(List.of(new ItemCotizacionRequest(1L, 50)))))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Stock insuficiente");
+    }
 }
