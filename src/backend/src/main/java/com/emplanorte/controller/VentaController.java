@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,6 +43,26 @@ public class VentaController {
     public ResponseEntity<?> listarDetallesVenta(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(ventaService.obtenerDetalles(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // Dentro de VentaController.java
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerVentaPorId(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(ventaService.obtenerPorId(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+}
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizarVenta(@PathVariable Long id, @RequestBody VentaRequest request) {
+        try {
+            return ResponseEntity.ok(ventaService.actualizarVenta(id, request));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
