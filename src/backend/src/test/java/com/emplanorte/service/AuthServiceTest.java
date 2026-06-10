@@ -238,4 +238,48 @@ class AuthServiceTest {
         assertThat(resultado.get().getId()).isEqualTo(1L);
         assertThat(resultado.get().getCorreo()).isEqualTo("duvan@emplanorte.com");
     }
+
+    // ─── Registro (RNF05) ─────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("registrar correo nuevo — cifra la contraseña con BCrypt, queda activo y se guarda")
+    void registrar_correoNuevo_cifraYGuarda() {
+        when(usuarioRepository.findByCorreo("nuevo@emplanorte.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("Admin2024*")).thenReturn("$2a$10$hashNuevo");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario u = authService.registrar("nuevo@emplanorte.com", "Admin2024*", "Nuevo Admin", "administrador");
+
+        assertThat(u.getContrasenaHash()).isEqualTo("$2a$10$hashNuevo");
+        assertThat(u.getContrasenaHash()).isNotEqualTo("Admin2024*"); // nunca texto plano
+        assertThat(u.getActivo()).isTrue();
+        assertThat(u.getCorreo()).isEqualTo("nuevo@emplanorte.com");
+        assertThat(u.getRol()).isEqualTo("administrador");
+    }
+
+    @Test
+    @DisplayName("registrar con correo ya existente — RuntimeException y no se guarda")
+    void registrar_correoExistente_lanzaExcepcion() {
+        when(usuarioRepository.findByCorreo("duvan@emplanorte.com"))
+                .thenReturn(Optional.of(usuarioActivo));
+
+        assertThatThrownBy(() ->
+                authService.registrar("duvan@emplanorte.com", "Admin2024*", "Duplicado", "administrador"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("ya está registrado");
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("registrar sin rol — asigna 'administrador' por defecto")
+    void registrar_sinRol_asignaAdministrador() {
+        when(usuarioRepository.findByCorreo("nuevo2@emplanorte.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$hash");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario u = authService.registrar("nuevo2@emplanorte.com", "Admin2024*", "Sin Rol", null);
+
+        assertThat(u.getRol()).isEqualTo("administrador");
+    }
 }

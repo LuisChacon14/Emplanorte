@@ -2,6 +2,7 @@ package com.emplanorte.controller;
 
 import com.emplanorte.model.Usuario;
 import com.emplanorte.service.AuthService;
+import com.emplanorte.service.LoginAttemptService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,8 +42,8 @@ import com.emplanorte.config.SecurityConfig;
  * Cada @DisplayName que empieza con [GAP] señala una prueba que se espera en ROJO.
  */
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
-@DisplayName("AuthController — Integración HTTP /api/auth/login (RNF05)")
+@Import({SecurityConfig.class, LoginAttemptService.class})
+@DisplayName("AuthController — Integración HTTP /api/auth (RNF05)")
 class AuthControllerTest {
 
     private static final String MSG_OBLIGATORIOS = "El correo y la contraseña son obligatorios";
@@ -52,12 +53,17 @@ class AuthControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private LoginAttemptService loginAttemptService;
     @MockBean  private AuthService authService;
 
     private Usuario usuarioMock;
 
     @BeforeEach
     void setUp() {
+        // El bloqueo por intentos fallidos es estado en memoria compartido entre
+        // métodos de la misma clase de test: se reinicia para aislar cada prueba.
+        loginAttemptService.reiniciar();
+
         usuarioMock = new Usuario();
         usuarioMock.setId(1L);
         usuarioMock.setNombre("Duvan Alvarado");
@@ -319,21 +325,19 @@ class AuthControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  VALIDACIONES ESPERADAS NO IMPLEMENTADAS  →  ESTAS PRUEBAS FALLAN (ROJO)
-    //  Quedan como evidencia documentada del gap, igual que CP-44.
+    //  VALIDACIONES DE ENTRADA DEL LOGIN (ya implementadas — deben PASAR)
+    //  El login valida campos vacios/en blanco (400) y bloquea por intentos (429).
+    //  El formato de correo y la complejidad de contraseña NO se validan aqui:
+    //  pertenecen al registro (ver clase RegistroEndpoint), no al login.
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("[GAP] Validaciones esperadas aún NO implementadas (se esperan en ROJO)")
-    class ValidacionesEsperadasNoImplementadas {
-
-        // ── Valores vacíos / en blanco ─────────────────────────────────────────
-        // El controlador solo verifica null, no cadenas vacías ni espacios:
-        // hoy "" pasa al service y devuelve 401, cuando lo correcto sería 400.
+    @DisplayName("Validaciones de entrada del login")
+    class ValidacionesDeEntrada {
 
         @Test
-        @DisplayName("[GAP] CP-VAL-1: correo vacío \"\" debería dar 400 con mensaje claro (hoy da 401)")
-        void login_correoVacio_deberiaRetornar400() throws Exception {
+        @DisplayName("CP-VAL-1: correo vacío \"\" → 400 con mensaje claro")
+        void login_correoVacio_retorna400() throws Exception {
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("correo", "", "contrasena", CLAVE_OK))))
@@ -342,8 +346,8 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("[GAP] CP-VAL-2: contraseña vacía \"\" debería dar 400 (al menos un caracter) (hoy da 401)")
-        void login_contrasenaVacia_deberiaRetornar400() throws Exception {
+        @DisplayName("CP-VAL-2: contraseña vacía \"\" → 400")
+        void login_contrasenaVacia_retorna400() throws Exception {
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("correo", CORREO_OK, "contrasena", ""))))
@@ -352,8 +356,8 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("[GAP] CP-VAL-3: correo solo espacios \"   \" debería dar 400 tras trim (hoy da 401)")
-        void login_correoSoloEspacios_deberiaRetornar400() throws Exception {
+        @DisplayName("CP-VAL-3: correo solo espacios \"   \" → 400 (isBlank)")
+        void login_correoSoloEspacios_retorna400() throws Exception {
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("correo", "   ", "contrasena", CLAVE_OK))))
@@ -361,61 +365,17 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("[GAP] CP-VAL-4: contraseña solo espacios \"   \" debería dar 400 (hoy da 401)")
-        void login_contrasenaSoloEspacios_deberiaRetornar400() throws Exception {
+        @DisplayName("CP-VAL-4: contraseña solo espacios \"   \" → 400 (isBlank)")
+        void login_contrasenaSoloEspacios_retorna400() throws Exception {
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("correo", CORREO_OK, "contrasena", "   "))))
                     .andExpect(status().isBadRequest());
         }
 
-        // ── Formato de correo ──────────────────────────────────────────────────
-
         @Test
-        @DisplayName("[GAP] CP-VAL-5: correo sin formato válido \"noesuncorreo\" debería dar 400 (hoy da 401)")
-        void login_correoFormatoInvalido_deberiaRetornar400() throws Exception {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("correo", "noesuncorreo", "contrasena", CLAVE_OK))))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(content().string(Matchers.containsString("formato")));
-        }
-
-        @Test
-        @DisplayName("[GAP] CP-VAL-6: correo con espacios internos \"a b@c.com\" debería dar 400 (hoy da 401)")
-        void login_correoConEspacios_deberiaRetornar400() throws Exception {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("correo", "a b@c.com", "contrasena", CLAVE_OK))))
-                    .andExpect(status().isBadRequest());
-        }
-
-        // ── Complejidad de contraseña: al menos un caracter + una mayúscula ─────
-
-        @Test
-        @DisplayName("[GAP] CP-VAL-7: contraseña sin ninguna mayúscula \"admin2024*\" debería dar 400 (hoy 401)")
-        void login_contrasenaSinMayuscula_deberiaRetornar400() throws Exception {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("correo", CORREO_OK, "contrasena", "admin2024*"))))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(content().string(Matchers.containsString("mayúscula")));
-        }
-
-        @Test
-        @DisplayName("[GAP] CP-VAL-8: contraseña de un solo caracter en minúscula \"a\" debería dar 400 (hoy 401)")
-        void login_contrasenaUnCaracterMinuscula_deberiaRetornar400() throws Exception {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("correo", CORREO_OK, "contrasena", "a"))))
-                    .andExpect(status().isBadRequest());
-        }
-
-        // ── CP-47 del Plan: bloqueo tras intentos fallidos ─────────────────────
-
-        @Test
-        @DisplayName("[GAP] CP-47: tras 5 intentos fallidos debería bloquear (429), hoy siempre responde 401")
-        void login_cincoIntentosFallidos_deberiaBloquear() throws Exception {
+        @DisplayName("CP-47: tras 5 intentos fallidos el 6º se bloquea con 429")
+        void login_cincoIntentosFallidos_bloquea() throws Exception {
             when(authService.login(any(), any())).thenReturn(Optional.empty());
 
             Map<String, String> credsMalas = new HashMap<>();
@@ -429,11 +389,139 @@ class AuthControllerTest {
                         .andExpect(status().isUnauthorized());
             }
 
-            // El 6º intento debería estar bloqueado (no implementado → hoy sigue dando 401)
+            // 6º intento: bloqueado
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(credsMalas)))
                     .andExpect(status().isTooManyRequests());
+        }
+
+        @Test
+        @DisplayName("CP-47b: un login exitoso reinicia el contador de intentos")
+        void login_exitoReiniciaContador() throws Exception {
+            // 4 fallos
+            when(authService.login(eq(CORREO_OK), eq("mala"))).thenReturn(Optional.empty());
+            for (int i = 0; i < 4; i++) {
+                mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(Map.of("correo", CORREO_OK, "contrasena", "mala"))))
+                        .andExpect(status().isUnauthorized());
+            }
+            // login correcto reinicia el contador
+            when(authService.login(eq(CORREO_OK), eq(CLAVE_OK))).thenReturn(Optional.of(usuarioMock));
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("correo", CORREO_OK, "contrasena", CLAVE_OK))))
+                    .andExpect(status().isOk());
+            // tras el éxito, vuelve a permitir intentos (no bloqueado)
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("correo", CORREO_OK, "contrasena", "mala"))))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  REGISTRO DE USUARIO — POST /api/auth/registro
+    //  Aqui SI se validan formato de correo y complejidad de contraseña, porque
+    //  es el momento en que el usuario las elige (no en el login).
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Registro de usuario /api/auth/registro")
+    class RegistroEndpoint {
+
+        @Test
+        @DisplayName("Registro válido → 201 con datos del usuario (sin hash)")
+        void registro_valido_retorna201() throws Exception {
+            Usuario creado = new Usuario();
+            creado.setId(2L);
+            creado.setNombre("Nuevo Admin");
+            creado.setCorreo("nuevo@emplanorte.com");
+            creado.setRol("administrador");
+            creado.setActivo(true);
+            when(authService.registrar(any(), any(), any(), any())).thenReturn(creado);
+
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "Nuevo Admin",
+                                    "correo", "nuevo@emplanorte.com",
+                                    "contrasena", "Admin2024*"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(2))
+                    .andExpect(jsonPath("$.correo").value("nuevo@emplanorte.com"))
+                    .andExpect(jsonPath("$.contrasenaHash").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("CP-VAL-5: correo sin formato válido \"noesuncorreo\" → 400 'formato'")
+        void registro_correoFormatoInvalido_retorna400() throws Exception {
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "X", "correo", "noesuncorreo", "contrasena", "Admin2024*"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string(Matchers.containsString("formato")));
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("CP-VAL-6: correo con espacios internos \"a b@c.com\" → 400")
+        void registro_correoConEspacios_retorna400() throws Exception {
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "X", "correo", "a b@c.com", "contrasena", "Admin2024*"))))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("CP-VAL-7: contraseña sin mayúscula \"admin2024*\" → 400 'mayúscula'")
+        void registro_contrasenaSinMayuscula_retorna400() throws Exception {
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "X", "correo", "x@emplanorte.com", "contrasena", "admin2024*"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string(Matchers.containsString("mayúscula")));
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("CP-VAL-8: contraseña muy corta \"Ab1\" → 400 (mínimo de caracteres)")
+        void registro_contrasenaCorta_retorna400() throws Exception {
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "X", "correo", "x@emplanorte.com", "contrasena", "Ab1"))))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("Campos obligatorios faltantes → 400")
+        void registro_camposFaltantes_retorna400() throws Exception {
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("Correo ya registrado → 409 Conflict con mensaje")
+        void registro_correoDuplicado_retorna409() throws Exception {
+            when(authService.registrar(any(), any(), any(), any()))
+                    .thenThrow(new RuntimeException("El correo ya está registrado"));
+
+            mockMvc.perform(post("/api/auth/registro")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "nombre", "X", "correo", "dup@emplanorte.com", "contrasena", "Admin2024*"))))
+                    .andExpect(status().isConflict())
+                    .andExpect(content().string(Matchers.containsString("ya está registrado")));
         }
     }
 }

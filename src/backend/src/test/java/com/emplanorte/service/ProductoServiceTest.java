@@ -94,6 +94,11 @@ class ProductoServiceTest {
     @DisplayName("CP-09: Capacidad decimal (250.5 ml) se almacena con precisión exacta")
     void guardar_capacidadDecimal_sinPerdidaDePrecision() {
         Producto producto = new Producto();
+        producto.setNombre("Botella PET 250ml");
+        producto.setCategoria(categoria);
+        producto.setCostoUnitario(new BigDecimal("800"));
+        producto.setPrecioVenta(new BigDecimal("1200"));
+        producto.setStockDisponible(50);
         producto.setCapacidadMl(new BigDecimal("250.5"));
         when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -379,70 +384,77 @@ class ProductoServiceTest {
     @DisplayName("[GAP] CP-02: nombre vacío \"\" debería rechazarse (hoy guardar lo acepta)")
     void guardar_nombreVacio_deberiaRechazar() {
         productoBase.setNombre("");
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("nombre");
     }
 
     @Test
     @DisplayName("[GAP] CP-02b: nombre null debería rechazarse (hoy guardar lo acepta)")
     void guardar_nombreNull_deberiaRechazar() {
         productoBase.setNombre(null);
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("nombre");
     }
 
     @Test
     @DisplayName("[GAP] CP-02c: nombre solo espacios \"   \" debería rechazarse (trim)")
     void guardar_nombreSoloEspacios_deberiaRechazar() {
         productoBase.setNombre("   ");
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("nombre");
     }
 
     @Test
     @DisplayName("[GAP] CP-03: stock negativo (-10) debería rechazarse (hoy se acepta)")
     void guardar_stockNegativo_deberiaRechazar() {
         productoBase.setStockDisponible(-10);
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("stock");
     }
 
     @Test
     @DisplayName("[GAP] Partición precio negativo (-1000) debería rechazarse (hoy se acepta)")
     void guardar_precioNegativo_deberiaRechazar() {
         productoBase.setPrecioVenta(new BigDecimal("-1000"));
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("precio");
     }
 
     @Test
     @DisplayName("[GAP] Partición precio cero debería rechazarse (no se regalan productos)")
     void guardar_precioCero_deberiaRechazar() {
         productoBase.setPrecioVenta(BigDecimal.ZERO);
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> productoService.guardar(productoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("precio");
     }
 
     @Test
-    @DisplayName("[GAP] CP-04: nombre duplicado debería alertar/rechazar (hoy permite duplicado silencioso)")
+    @DisplayName("CP-04: nombre duplicado se rechaza (no se permiten duplicados)")
     void guardar_nombreDuplicado_deberiaRechazar() {
-        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Ya existe un producto activo con ese nombre
+        when(productoRepository.findByActivoTrue()).thenReturn(List.of(productoBase));
         Producto duplicado = new Producto();
         duplicado.setNombre("Botella PET 500ml"); // mismo nombre que productoBase
+        duplicado.setCategoria(categoria);
+        duplicado.setCostoUnitario(new BigDecimal("1000"));
+        duplicado.setPrecioVenta(new BigDecimal("1500"));
+        duplicado.setStockDisponible(5);
 
         assertThatThrownBy(() -> productoService.guardar(duplicado))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Ya existe");
+        verify(productoRepository, never()).save(any());
     }
 }

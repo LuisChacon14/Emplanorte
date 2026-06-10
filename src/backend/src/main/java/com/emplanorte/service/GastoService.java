@@ -1,5 +1,6 @@
 package com.emplanorte.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -30,6 +31,14 @@ public class GastoService {
     }
 
     public Gasto guardar(Gasto gasto) {
+        // CP-29 - El valor del gasto debe ser positivo
+        if (gasto.getValor() == null || gasto.getValor().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("El valor del gasto debe ser mayor a cero");
+        }
+        // CP-28 - No se permiten gastos con fecha futura
+        if (gasto.getFechaGasto() != null && gasto.getFechaGasto().isAfter(LocalDate.now())) {
+            throw new RuntimeException("La fecha del gasto no puede ser futura");
+        }
         if (gasto.getFechaGasto() == null) {
             gasto.setFechaGasto(LocalDate.now());
         }
@@ -53,6 +62,16 @@ public class GastoService {
     }
 
     public CategoriaGasto guardarCategoria(CategoriaGasto categoria) {
+        if (categoria.getNombre() == null || categoria.getNombre().isBlank()) {
+            throw new RuntimeException("El nombre de la categoría es obligatorio");
+        }
+        // CP-31 - No permitir categorías de gasto duplicadas
+        boolean duplicada = categoriaGastoRepository.findByActivoTrue().stream()
+                .anyMatch(c -> c.getNombre() != null
+                        && c.getNombre().trim().equalsIgnoreCase(categoria.getNombre().trim()));
+        if (duplicada) {
+            throw new RuntimeException("La categoría ya existe: " + categoria.getNombre().trim());
+        }
         categoria.setActivo(true);
         return categoriaGastoRepository.save(categoria);
     }

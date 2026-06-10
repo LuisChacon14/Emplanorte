@@ -22,6 +22,16 @@ public class ClienteService {
     }
 
     public Cliente guardar(Cliente cliente) {
+        // CP-40 - El nombre del cliente es obligatorio
+        if (cliente.getNombre() == null || cliente.getNombre().isBlank()) {
+            throw new RuntimeException("El nombre del cliente es obligatorio");
+        }
+        // CP-41 - El teléfono, si viene, debe tener formato válido (7 a 15 dígitos,
+        // admite un prefijo + opcional). Ej.: 3001234567 o +573001234567
+        if (cliente.getTelefono() != null && !cliente.getTelefono().isBlank()
+                && !cliente.getTelefono().trim().matches("\\+?\\d{7,15}")) {
+            throw new RuntimeException("El número de contacto tiene un formato inválido");
+        }
         cliente.setActivo(true);
         return clienteRepository.save(cliente);
     }

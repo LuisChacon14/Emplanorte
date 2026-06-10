@@ -240,40 +240,43 @@ class GastoServiceTest {
     @DisplayName("[GAP] CP-28: gasto con fecha FUTURA debería rechazarse (hoy se acepta)")
     void guardar_fechaFutura_deberiaRechazar() {
         gastoBase.setFechaGasto(LocalDate.now().plusDays(7));
-        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> gastoService.guardar(gastoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("futura");
     }
 
     @Test
     @DisplayName("[GAP] CP-29: gasto con valor CERO debería rechazarse (hoy se acepta)")
     void guardar_valorCero_deberiaRechazar() {
         gastoBase.setValor(BigDecimal.ZERO);
-        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> gastoService.guardar(gastoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("mayor a cero");
     }
 
     @Test
     @DisplayName("[GAP] CP-29b: gasto con valor NEGATIVO (-100) debería rechazarse (hoy se acepta)")
     void guardar_valorNegativo_deberiaRechazar() {
         gastoBase.setValor(new BigDecimal("-100"));
-        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> gastoService.guardar(gastoBase))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("mayor a cero");
     }
 
     @Test
-    @DisplayName("[GAP] CP-31: categoría duplicada debería rechazarse (hoy permite duplicado)")
+    @DisplayName("CP-31: categoría duplicada se rechaza")
     void guardarCategoria_duplicada_deberiaRechazar() {
-        when(categoriaGastoRepository.save(any(CategoriaGasto.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Ya existe una categoría activa con ese nombre
+        when(categoriaGastoRepository.findByActivoTrue()).thenReturn(List.of(categoriaMock));
         CategoriaGasto duplicada = new CategoriaGasto();
         duplicada.setNombre("Transporte"); // ya existe (categoriaMock)
 
         assertThatThrownBy(() -> gastoService.guardarCategoria(duplicada))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("ya existe");
+        verify(categoriaGastoRepository, never()).save(any());
     }
 }
