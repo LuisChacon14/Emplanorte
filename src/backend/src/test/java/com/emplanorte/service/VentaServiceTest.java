@@ -303,4 +303,109 @@ class VentaServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("Venta SIN cliente (idCliente null) — se registra igual con cliente nulo")
+    void registrarVenta_sinCliente_seRegistraConClienteNulo() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        stubGuardado();
+
+        Venta resultado = ventaService.registrarVenta(buildRequest(List.of(new ItemVentaRequest(1L, 1))));
+
+        assertThat(resultado.getCliente()).isNull();
+        assertThat(resultado.getEstado()).isEqualTo("completada");
+    }
+
+    @Test
+    @DisplayName("Venta con idCliente que NO existe — RuntimeException 'Cliente no encontrado'")
+    void registrarVenta_clienteNoExiste_lanzaExcepcion() {
+        VentaRequest req = buildRequest(List.of(new ItemVentaRequest(1L, 1)));
+        req.setIdCliente(50L);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(clienteRepository.findById(50L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ventaService.registrarVenta(req))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Cliente no encontrado");
+    }
+
+    @Test
+    @DisplayName("Venta exitosa — la fecha de venta se asigna automáticamente (no nula)")
+    void registrarVenta_fechaSeAsignaAutomaticamente() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        stubGuardado();
+
+        Venta resultado = ventaService.registrarVenta(buildRequest(List.of(new ItemVentaRequest(1L, 1))));
+
+        assertThat(resultado.getFechaVenta()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Venta con descuento — total = subtotal − descuento; ganancia = total − costo")
+    void registrarVenta_conDescuento_totalYGananciaCorrectos() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        stubGuardado();
+
+        VentaRequest req = buildRequest(List.of(new ItemVentaRequest(1L, 2))); // subtotal 3000, costo 2000
+        req.setDescuento(new BigDecimal("500"));
+
+        Venta resultado = ventaService.registrarVenta(req);
+
+        assertThat(resultado.getSubtotal()).isEqualByComparingTo(new BigDecimal("3000"));
+        assertThat(resultado.getTotal()).isEqualByComparingTo(new BigDecimal("2500"));      // 3000 - 500
+        assertThat(resultado.getGanancia()).isEqualByComparingTo(new BigDecimal("500"));    // 2500 - 2000
+    }
+
+    @Test
+    @DisplayName("Descuento mayor al subtotal — el total se limita a cero, nunca negativo")
+    void registrarVenta_descuentoExcesivo_totalEnCero() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        stubGuardado();
+
+        VentaRequest req = buildRequest(List.of(new ItemVentaRequest(1L, 1))); // subtotal 1500
+        req.setDescuento(new BigDecimal("9999"));
+
+        Venta resultado = ventaService.registrarVenta(req);
+
+        assertThat(resultado.getTotal()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    @DisplayName("CP-21 adicional: venta a PÉRDIDA (precio < costo) — ganancia queda negativa")
+    void registrarVenta_aPerdida_gananciaNegativa() {
+        producto.setPrecioVenta(new BigDecimal("800"));
+        producto.setCostoUnitario(new BigDecimal("1000"));
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        stubGuardado();
+
+        Venta resultado = ventaService.registrarVenta(buildRequest(List.of(new ItemVentaRequest(1L, 2))));
+
+        // total 1600 - costo 2000 = -400
+        assertThat(resultado.getGanancia()).isNegative();
+        assertThat(resultado.getGanancia()).isEqualByComparingTo(new BigDecimal("-400"));
+    }
+
+    @Test
+    @DisplayName("Partición 'muy grande' (999999999) con stock 10 — rechazada por stock insuficiente")
+    void registrarVenta_cantidadMuyGrande_rechazadaPorStock() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
+        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(ventaRepository.generarNumeroVenta()).thenReturn("VTA-000099");
+
+        assertThatThrownBy(() ->
+                ventaService.registrarVenta(buildRequest(List.of(new ItemVentaRequest(1L, 999999999))))
+        )
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Stock insuficiente");
+        assertThat(producto.getStockDisponible()).isEqualTo(10); // intacto
+    }
 }

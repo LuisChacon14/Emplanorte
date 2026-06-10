@@ -1,73 +1,68 @@
 ================================================================================
   REPORTE DE EJECUCION DE PRUEBAS — EMPLANORTE S.A.S.
   Modulo : Autenticacion y Seguridad (AuthService)
-  Fecha  : 2026-06-05
-  Hora   : 07:46:49 (America/Bogota)
+  Fecha  : 2026-06-09
+  Hora   : 23:05:00 (America/Bogota)
   Entorno: Windows 11 | Java 25.0.1 | Spring Boot 3.2.5
+  Ejecucion: suite completa (mvn test) en una sola corrida
 ================================================================================
 
 RESUMEN
 -------
-  Total de pruebas ejecutadas : 10
-  Pruebas exitosas            : 10
+  Total de pruebas ejecutadas : 13   (10 originales + 3 nuevas rol tester)
+  Pruebas exitosas            : 13
   Fallos                      : 0
   Errores                     : 0
   Omitidas                    : 0
-  Tiempo total                : 1.648 segundos
+  Tiempo total                : 0.242 segundos
   Resultado                   : APROBADO
 
 ================================================================================
-DETALLE POR CASO DE PRUEBA
+DETALLE POR CASO DE PRUEBA — respuesta del sistema
 ================================================================================
 
-  #   Caso del Plan  Descripcion                                                Estado   Tiempo
-  --- -------------- ---------------------------------------------------------- -------- -------
-  1   CP-45          Login con credenciales validas - retorna usuario            PASO     0.011 s
-  2   CP-45b         Login exitoso usa BCrypt, nunca comparacion en texto plano  PASO     0.005 s
-  3   CP-46          Contrasena incorrecta - retorna vacio                       PASO     0.005 s
-  4   CP-46b         Correo no registrado - retorna vacio (igual que clave mala) PASO     0.004 s
-  5   CP-46c         Respuesta identica para correo y clave invalidos (sin leak) PASO     0.004 s
-  6   CP-46d         Usuario inactivo - no puede iniciar sesion                  PASO     0.004 s
-  7   CP-47          Multiples intentos fallidos - respuesta consistente         PASO     0.006 s
-  8   CP-48          Inyeccion SQL en correo - string literal, no se ejecuta     PASO     0.004 s
-  9   CP-48b         Inyeccion SQL en contrasena - BCrypt neutraliza el intento  PASO     0.004 s
-  10  Particion      Correo nulo - retorna vacio sin NullPointerException        PASO     0.004 s
+  Estado  Caso     Descripcion
+  ------- -------- ---------------------------------------------------------------
+  PASO    CP-45    Credenciales validas -> retorna el usuario autenticado
+  PASO    CP-45b   Login usa BCrypt.matches, nunca compara texto plano
+  PASO    CP-46    Contrasena incorrecta -> Optional vacio
+  PASO    CP-46b   Correo no registrado -> vacio; encoder NO se invoca
+  PASO    CP-46c   Respuesta identica (correo inexistente == clave mala)
+  PASO    CP-46d   Usuario inactivo -> vacio aunque la clave sea correcta
+  PASO    CP-47    5 intentos fallidos -> responde consistente (bloqueo pendiente)
+  PASO    CP-48    Inyeccion SQL en correo -> texto literal, no se ejecuta
+  PASO    CP-48b   Inyeccion SQL en contrasena -> BCrypt la neutraliza
+  PASO    Particion Correo nulo -> vacio sin NullPointerException
+  --- nuevas (rol tester) -------------------------------------------------------
+  PASO    NUEVA    Correo vacio "" -> vacio; el servicio no valida formato
+  PASO    NUEVA    Correo en otro case (MAYUS) -> busqueda exacta, depende del repo
+  PASO    NUEVA    Login exitoso -> devuelve el MISMO usuario (id 1, correo)
 
 ================================================================================
 REQUISITOS CUBIERTOS
 ================================================================================
 
-  RNF05 - Control de acceso y seguridad                                CUBIERTO
-    - Autenticacion con BCrypt (no se guardan contrasenas en texto plano)
-    - Respuesta generica ante credenciales invalidas (no filtra info)
-    - Proteccion contra inyeccion SQL via Spring Data JPA (PreparedStatement)
-    - Usuario inactivo no puede autenticarse aunque la clave sea correcta
+  RNF05 - Control de acceso (capa de servicio)                         CUBIERTO
+    - Autenticacion con BCrypt; usuario inactivo bloqueado
+    - Mensaje/resultado generico, sin filtrar si el correo existe
+    - Robustez ante inyeccion SQL y correo nulo/vacio
 
 ================================================================================
 OBSERVACIONES
 ================================================================================
 
-  - CP-47 (bloqueo de cuenta tras N intentos fallidos) documenta que el
-    servicio actual responde consistentemente pero AUN NO implementa bloqueo
-    temporal. Esta funcionalidad queda pendiente para una mejora futura.
-
-  - CP-48 demuestra por que Spring Data JPA protege contra inyeccion SQL:
-    findByCorreo() genera un PreparedStatement parametrizado, por lo que
-    el string de inyeccion se trata como texto literal, no como SQL ejecutable.
-
-  - BCrypt es resistente a ataques de fuerza bruta por su costo computacional
-    configurable. El sistema usa la implementacion de Spring Security.
-
-  - Todas las pruebas usan mocks (Mockito): no requieren base de datos activa.
+  - El AuthService NO valida formato de correo ni reglas de contrasena: solo
+    busca el usuario y compara con BCrypt. La validacion de entrada (formato,
+    campos vacios) y el bloqueo por intentos (CP-47) corresponden a la capa
+    HTTP / a un futuro endpoint de registro — ver AuthControllerTest_resultado.txt
+    donde esos casos quedan documentados como GAP en ROJO.
+  - El bloqueo de cuenta por intentos fallidos (CP-47) aun no esta implementado.
 
 ================================================================================
 ARCHIVOS DEL PROYECTO
 ================================================================================
 
-  Codigo fuente de las pruebas:
-  src/backend/src/test/java/com/emplanorte/service/AuthServiceTest.java
-
-  Servicio bajo prueba:
-  src/backend/src/main/java/com/emplanorte/service/AuthService.java
+  Pruebas : src/backend/src/test/java/com/emplanorte/service/AuthServiceTest.java
+  Servicio: src/backend/src/main/java/com/emplanorte/service/AuthService.java
 
 ================================================================================

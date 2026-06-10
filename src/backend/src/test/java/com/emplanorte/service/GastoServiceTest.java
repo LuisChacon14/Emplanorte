@@ -177,4 +177,103 @@ class GastoServiceTest {
 
         assertThat(resultado.getValor()).isEqualByComparingTo(new BigDecimal("125000.75"));
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ── Comportamiento real adicional (deben PASAR) ──────────────────────────
+
+    @Test
+    @DisplayName("actualizarGasto existente — los campos se actualizan y se persiste")
+    void actualizarGasto_existente_camposActualizados() {
+        Gasto cambios = new Gasto();
+        cambios.setDescripcion("Gasolina + peajes");
+        cambios.setValor(new BigDecimal("65000"));
+        cambios.setCategoria(categoriaMock);
+        cambios.setFechaGasto(LocalDate.now());
+
+        when(gastoRepository.findById(1L)).thenReturn(java.util.Optional.of(gastoBase));
+        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Gasto resultado = gastoService.actualizarGasto(1L, cambios);
+
+        assertThat(resultado.getDescripcion()).isEqualTo("Gasolina + peajes");
+        assertThat(resultado.getValor()).isEqualByComparingTo(new BigDecimal("65000"));
+    }
+
+    @Test
+    @DisplayName("actualizarGasto inexistente — RuntimeException 'Gasto no encontrado'")
+    void actualizarGasto_inexistente_lanzaExcepcion() {
+        when(gastoRepository.findById(99L)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> gastoService.actualizarGasto(99L, gastoBase))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Gasto no encontrado");
+    }
+
+    @Test
+    @DisplayName("guardarCategoria fuerza activo=true aunque la categoría llegue con activo=false")
+    void guardarCategoria_forzaActivoTrue() {
+        CategoriaGasto nueva = new CategoriaGasto();
+        nueva.setNombre("Impuestos");
+        nueva.setActivo(false);
+        when(categoriaGastoRepository.save(any(CategoriaGasto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CategoriaGasto resultado = gastoService.guardarCategoria(nueva);
+
+        assertThat(resultado.getActivo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Listar categorías activas sin resultados — lista vacía sin error")
+    void obtenerCategoriasActivas_vacio_sinError() {
+        when(categoriaGastoRepository.findByActivoTrue()).thenReturn(Collections.emptyList());
+
+        assertThat(gastoService.obtenerCategoriasActivas()).isEmpty();
+    }
+
+    // ── [GAP] Validaciones del Plan NO implementadas (se esperan en ROJO) ─────
+    //    GastoService.guardar() solo asigna fecha=hoy si es null; no valida nada.
+
+    @Test
+    @DisplayName("[GAP] CP-28: gasto con fecha FUTURA debería rechazarse (hoy se acepta)")
+    void guardar_fechaFutura_deberiaRechazar() {
+        gastoBase.setFechaGasto(LocalDate.now().plusDays(7));
+        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> gastoService.guardar(gastoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-29: gasto con valor CERO debería rechazarse (hoy se acepta)")
+    void guardar_valorCero_deberiaRechazar() {
+        gastoBase.setValor(BigDecimal.ZERO);
+        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> gastoService.guardar(gastoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-29b: gasto con valor NEGATIVO (-100) debería rechazarse (hoy se acepta)")
+    void guardar_valorNegativo_deberiaRechazar() {
+        gastoBase.setValor(new BigDecimal("-100"));
+        when(gastoRepository.save(any(Gasto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> gastoService.guardar(gastoBase))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("[GAP] CP-31: categoría duplicada debería rechazarse (hoy permite duplicado)")
+    void guardarCategoria_duplicada_deberiaRechazar() {
+        when(categoriaGastoRepository.save(any(CategoriaGasto.class))).thenAnswer(inv -> inv.getArgument(0));
+        CategoriaGasto duplicada = new CategoriaGasto();
+        duplicada.setNombre("Transporte"); // ya existe (categoriaMock)
+
+        assertThatThrownBy(() -> gastoService.guardarCategoria(duplicada))
+                .isInstanceOf(RuntimeException.class);
+    }
 }

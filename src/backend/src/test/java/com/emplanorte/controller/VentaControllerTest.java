@@ -140,4 +140,85 @@ class VentaControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Usuario")));
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PRUEBAS ADICIONALES (rol tester) — documentan cada respuesta del sistema
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("POST 201 — la respuesta expone TODOS los campos financieros de la venta")
+    void registrarVenta_exitosa_exponeTodosLosCampos() throws Exception {
+        when(ventaService.registrarVenta(any(VentaRequest.class))).thenReturn(ventaMock);
+
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.numeroVenta").value("VTA-000001"))
+                .andExpect(jsonPath("$.metodoPago").value("efectivo"))
+                .andExpect(jsonPath("$.subtotal").value(4500))
+                .andExpect(jsonPath("$.descuento").value(0))
+                .andExpect(jsonPath("$.total").value(4500))
+                .andExpect(jsonPath("$.totalCosto").value(3000))
+                .andExpect(jsonPath("$.ganancia").value(1500));
+    }
+
+    @Test
+    @DisplayName("POST cantidad cero — el servicio rechaza y el controlador responde 400 con mensaje")
+    void registrarVenta_cantidadCero_retorna400() throws Exception {
+        when(ventaService.registrarVenta(any(VentaRequest.class)))
+                .thenThrow(new RuntimeException("La cantidad de cada producto debe ser mayor a cero"));
+
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestValido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("mayor a cero")));
+    }
+
+    @Test
+    @DisplayName("GET /api/ventas/{id}/detalles — HTTP 200 con la lista de detalles")
+    void listarDetalles_exitoso_retorna200() throws Exception {
+        when(ventaService.obtenerDetalles(1L)).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/ventas/1/detalles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/ventas/{id}/detalles de venta inexistente — HTTP 400 con mensaje")
+    void listarDetalles_ventaNoExiste_retorna400() throws Exception {
+        when(ventaService.obtenerDetalles(99L))
+                .thenThrow(new RuntimeException("Venta no encontrada"));
+
+        mockMvc.perform(get("/api/ventas/99/detalles"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Venta no encontrada")));
+    }
+
+    @Test
+    @DisplayName("POST /api/ventas con JSON malformado — HTTP 400")
+    void registrarVenta_jsonMalformado_retorna400() throws Exception {
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idUsuario\": 1, "))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/ventas con Content-Type text/plain — HTTP 415 Unsupported Media Type")
+    void registrarVenta_contentTypeInvalido_retorna415() throws Exception {
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("idUsuario=1"))
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/ventas — HTTP 405 Method Not Allowed (no existe ese método)")
+    void deleteVentas_retorna405() throws Exception {
+        mockMvc.perform(delete("/api/ventas"))
+                .andExpect(status().isMethodNotAllowed());
+    }
 }
