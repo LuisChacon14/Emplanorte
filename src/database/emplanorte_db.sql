@@ -8,10 +8,6 @@
 -- ============================================================
 
 -- Configuración del entorno
-\c postgres
-DROP DATABASE IF EXISTS emplanorte; 
-CREATE DATABASE emplanorte; 
-\c emplanorte
 
 SET client_encoding = 'UTF8';
 
@@ -276,24 +272,41 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_stock_actual INT;
 BEGIN
-    SELECT stock_disponible INTO v_stock_actual FROM productos WHERE id = NEW.id_producto;
-    
-    IF v_stock_actual < NEW.cantidad THEN
-        RAISE EXCEPTION 'Stock insuficiente para el producto ID %: disponible %, solicitado %', 
-            NEW.id_producto, v_stock_actual, NEW.cantidad;
+    -- 1. SI SE BORRA UN REGISTRO (Al limpiar detalles viejos en el actualizar)
+    IF TG_OP = 'DELETE' THEN
+        UPDATE productos 
+        SET stock_disponible = stock_disponible + OLD.cantidad
+        WHERE id = OLD.id_producto;
+        RETURN OLD; -- En DELETE se retorna OLD
     END IF;
 
-    UPDATE productos 
-    SET stock_disponible = stock_disponible - NEW.cantidad 
-    WHERE id = NEW.id_producto;
+    -- 2. SI SE INSERTA UN REGISTRO (Venta nueva o detalles nuevos de la actualización)
+    IF TG_OP = 'INSERT' THEN
+        SELECT stock_disponible INTO v_stock_actual FROM productos WHERE id = NEW.id_producto;
+        
+        IF v_stock_actual < NEW.cantidad THEN
+            RAISE EXCEPTION 'Stock insuficiente para el producto ID %: disponible %, solicitado %', 
+                NEW.id_producto, v_stock_actual, NEW.cantidad;
+        END IF;
 
-    RETURN NEW;
+        UPDATE productos 
+        SET stock_disponible = stock_disponible - NEW.cantidad 
+        WHERE id = NEW.id_producto;
+        
+        RETURN NEW; -- En INSERT se retorna NEW
+    END IF;
+
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_descontar_stock ON detalle_ventas;
+
+-- Creamos el nuevo trigger que ahora escucha tanto INSERT como DELETE
 CREATE TRIGGER trg_descontar_stock
-AFTER INSERT ON detalle_ventas
-FOR EACH ROW EXECUTE FUNCTION fn_descontar_stock();
+AFTER INSERT OR DELETE ON detalle_ventas
+FOR EACH ROW 
+EXECUTE FUNCTION fn_descontar_stock();
 
 -- Generadores de Consecutivos (Automatización)
 CREATE OR REPLACE FUNCTION fn_generar_numero_venta()

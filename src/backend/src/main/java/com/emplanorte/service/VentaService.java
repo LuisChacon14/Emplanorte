@@ -160,5 +160,83 @@ public class VentaService {
             .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
 
     return detalleVentaRepository.findByVentaId(ventaId);
-}
+    }
+    public Venta obtenerPorId(Long id) {
+        return ventaRepository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public Venta actualizarVenta(Long id, VentaRequest request) {
+        // 1. Verificar que la venta exista
+        Venta ventaExistente = ventaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada con ID: " + id));
+        
+        // 2. Actualizar datos básicos de la cabecera
+        ventaExistente.setMetodoPago(request.getMetodoPago());
+        ventaExistente.setObservaciones(request.getObservaciones());
+        ventaExistente.setDescuento(request.getDescuento());
+        
+        // ====================================================================
+        // 💥 SOLUCIÓN MANUAL DE STOCK PARA EVITAR ERRORES DEL TRIGGER 💥
+        // ====================================================================
+        // Buscamos los detalles que ya existen antes de borrarlos
+        List<DetalleVenta> detallesViejos = detalleVentaRepository.findByVentaId(id);
+        for (DetalleVenta dv : detallesViejos) {
+            Producto prodDb = dv.getProducto();
+            // Le sumamos al stock actual lo que se había vendido en la orden vieja
+            prodDb.setStockDisponible(prodDb.getStockDisponible() + dv.getCantidad());
+            productoRepository.save(prodDb); 
+        }
+        // Aseguramos que los cambios de stock impacten inmediatamente en la DB
+        productoRepository.flush();
+        // ====================================================================
+
+        // 3. Ahora sí, limpiamos los detalles viejos con total seguridad
+        detalleVentaRepository.deleteByVentaId(id);
+        detalleVentaRepository.flush(); // Obliga a aplicar el DELETE en SQL
+        
+        // 4. Inicializar acumuladores para los nuevos totales
+        BigDecimal nuevoSubtotal = BigDecimal.ZERO;
+        BigDecimal nuevoCostoTotal = BigDecimal.ZERO;
+        
+        // 5. Recorrer y guardar cada producto con sus nuevos cálculos
+        for (ItemVentaRequest item : request.getDetalles()) {
+            Producto prod = productoRepository.findById(item.getIdProducto())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + item.getIdProducto()));
+                    
+            BigDecimal precioUnitario = prod.getPrecioVenta();
+            BigDecimal costoUnitario = prod.getCostoUnitario();
+            BigDecimal cantidad = new BigDecimal(item.getCantidad());
+
+            BigDecimal subtotalLinea = precioUnitario.multiply(cantidad);
+            nuevoSubtotal = nuevoSubtotal.add(subtotalLinea);
+            
+            BigDecimal costoLinea = costoUnitario.multiply(cantidad);
+            nuevoCostoTotal = nuevoCostoTotal.add(costoLinea);
+            
+            BigDecimal gananciaLinea = subtotalLinea.subtract(costoLinea);
+            
+            // Crear el nuevo registro físico
+            DetalleVenta nuevoDetalle = new DetalleVenta();
+            nuevoDetalle.setVenta(ventaExistente);
+            nuevoDetalle.setProducto(prod);
+            nuevoDetalle.setCantidad(item.getCantidad());
+            nuevoDetalle.setPrecioUnitario(precioUnitario);
+            nuevoDetalle.setCostoUnitario(costoUnitario);
+            nuevoDetalle.setSubtotalLinea(subtotalLinea);
+            nuevoDetalle.setCostoLinea(costoLinea);
+            nuevoDetalle.setGananciaLinea(gananciaLinea);
+            
+            detalleVentaRepository.save(nuevoDetalle);
+        }
+        
+        // 6. Asignar los nuevos cálculos macro a la venta general
+        ventaExistente.setSubtotal(nuevoSubtotal);
+        ventaExistente.setTotal(nuevoSubtotal.subtract(request.getDescuento()));
+        ventaExistente.setTotalCosto(nuevoCostoTotal);
+        ventaExistente.setGanancia(ventaExistente.getTotal().subtract(nuevoCostoTotal));
+        
+        // 7. Guardar y retornar la venta matriz actualizada
+        return ventaRepository.save(ventaExistente);
+    }
 }
