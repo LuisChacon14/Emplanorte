@@ -3,7 +3,13 @@
    Wrapper de comunicación con el backend (http://localhost:8080/api)
    ============================================================ */
 
-const API_BASE_URL = 'http://localhost:8080/api';
+// La URL del backend cambia según dónde se ejecute el frontend:
+// - En local (localhost/127.0.0.1) apunta al backend de tu PC.
+// - En producción (Render u otro host) apunta al backend desplegado.
+const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const API_BASE_URL = isLocal
+    ? 'http://localhost:8080/api'
+    : 'https://emplanorte-2.onrender.com/api';
 
 const ApiClient = {
     // Utilidad interna para peticiones fetch
