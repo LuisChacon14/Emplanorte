@@ -71,8 +71,9 @@ public ResponseEntity<?> actualizarCotizacion(@PathVariable Long id, @RequestBod
         if (metodoPago == null) {
             metodoPago = "efectivo"; // Por defecto si no se especifica
         }
+        String referenciaPago = body.get("referenciaPago"); // null si no viene de la pasarela
         try {
-            Venta venta = cotizacionService.convertirAVenta(id, metodoPago);
+            Venta venta = cotizacionService.convertirAVenta(id, metodoPago, referenciaPago);
             return ResponseEntity.ok(venta);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

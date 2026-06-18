@@ -238,6 +238,9 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Generación de PDF (local, funciona sin internet) -->
+    <script src="../js/vendor/jspdf.umd.min.js"></script>
+    <script src="../js/vendor/jspdf.plugin.autotable.min.js"></script>
     <script src="../js/api.js"></script>
     <script src="../js/utils.js"></script>
     <script>
@@ -438,66 +441,141 @@
             cargarResumen();
         });
 
-        // ---- Descargar Reporte CSV ----
-        btnDescargar.addEventListener('click', () => {
+        // ---- Logo precargado para el PDF (best-effort) ----
+        const logoReporte = new Image();
+        logoReporte.src = '../img/Logo.png';
+
+        // ---- Descargar Reporte PDF (jsPDF + autotable) ----
+        btnDescargar.addEventListener('click', async () => {
             const desde = filtroDesde.value;
             const hasta = filtroHasta.value;
 
-            // Generar CSV con datos actuales
-            let csv = '';
-
-            // Sección Resumen
-            csv += 'REPORTE EMPLANORTE\n';
-            csv += `Período: ${formatDate(desde)} - ${formatDate(hasta)}\n`;
-            csv += `Generado: ${formatDateTime(new Date().toISOString())}\n\n`;
-
-            // Sección Ventas
-            csv += 'ÚLTIMAS VENTAS\n';
-            csv += '#,Fecha,Cliente,Total,Ganancia,Estado\n';
-            if (ventasData.length > 0) {
-                const ventasOrdenadas = [...ventasData]
-                    .sort((a, b) => new Date(b.fechaVenta || 0) - new Date(a.fechaVenta || 0))
-                    .slice(0, 20);
-                ventasOrdenadas.forEach((v, i) => {
-                    const cliente = (v.cliente ? v.cliente.nombre : 'Sin cliente').replace(/,/g, ';');
-                    const total = Number(v.total) || 0;
-                    const ganancia = Number(v.ganancia) || 0;
-                    const estado = v.estado || 'completada';
-                    csv += `${i + 1},${formatDate(v.fechaVenta)},${cliente},${total},${ganancia},${estado}\n`;
-                });
-            } else {
-                csv += 'Sin datos\n';
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                showToast('No se pudo cargar el generador de PDF', 'error');
+                return;
             }
 
-            csv += '\n';
+            // Filtrar datos al período seleccionado (todas las filas, no solo 20)
+            const enRango = (fecha) => {
+                if (!fecha) return false;
+                const f = String(fecha).split('T')[0];
+                return (!desde || f >= desde) && (!hasta || f <= hasta);
+            };
+            const ventas = [...ventasData].filter(v => enRango(v.fechaVenta))
+                .sort((a, b) => new Date(b.fechaVenta || 0) - new Date(a.fechaVenta || 0));
+            const gastos = [...gastosData].filter(g => enRango(g.fechaGasto))
+                .sort((a, b) => new Date(b.fechaGasto || 0) - new Date(a.fechaGasto || 0));
 
-            // Sección Gastos
-            csv += 'ÚLTIMOS GASTOS\n';
-            csv += '#,Fecha,Categoría,Descripción,Valor\n';
-            if (gastosData.length > 0) {
-                const gastosOrdenados = [...gastosData]
-                    .sort((a, b) => new Date(b.fechaGasto || 0) - new Date(a.fechaGasto || 0))
-                    .slice(0, 20);
-                gastosOrdenados.forEach((g, i) => {
-                    const cat = (g.categoria ? g.categoria.nombre : 'Sin categoría').replace(/,/g, ';');
-                    const desc = (g.descripcion || '-').replace(/,/g, ';');
-                    const valor = Number(g.valor) || 0;
-                    csv += `${i + 1},${formatDate(g.fechaGasto)},${cat},${desc},${valor}\n`;
-                });
-            } else {
-                csv += 'Sin datos\n';
+            // KPIs del período (consistentes con las tarjetas del dashboard)
+            let totalVentas = 0, totalGastos = 0;
+            try {
+                const resumen = await ApiClient.obtenerResumenDashboard(desde, hasta);
+                totalVentas = Number(resumen.totalVentas) || 0;
+                totalGastos = Number(resumen.totalGastos) || 0;
+            } catch (_) {
+                totalVentas = ventas.reduce((s, v) => s + (Number(v.total) || 0), 0);
+                totalGastos = gastos.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+            }
+            const balance = totalVentas - totalGastos;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const margin = 40;
+            const AZUL = [49, 130, 206];
+            const NARANJA = [221, 107, 32];
+            const GRIS = [45, 55, 72];
+            let y = margin;
+
+            // ---- Encabezado ----
+            try {
+                if (logoReporte.complete && logoReporte.naturalWidth > 0) {
+                    doc.addImage(logoReporte, 'PNG', margin, y, 42, 42);
+                }
+            } catch (_) { /* sin logo si falla */ }
+
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(AZUL[0], AZUL[1], AZUL[2]);
+            doc.text('EMPLANORTE S.A.S.', margin + 52, y + 18);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(90, 90, 90);
+            doc.text('Reporte de Gestion Comercial', margin + 52, y + 34);
+            y += 58;
+
+            doc.setFontSize(10); doc.setTextColor(110, 110, 110);
+            doc.text(`Periodo: ${formatDate(desde)}  -  ${formatDate(hasta)}`, margin, y);
+            doc.text(`Generado: ${formatDateTime(new Date().toISOString())}`, pageW - margin, y, { align: 'right' });
+            y += 14;
+            doc.setDrawColor(220, 220, 220); doc.line(margin, y, pageW - margin, y); y += 18;
+
+            // ---- Tarjetas de KPIs ----
+            const kpis = [
+                ['Ventas del periodo', formatCurrency(totalVentas), GRIS],
+                ['Gastos del periodo', formatCurrency(totalGastos), GRIS],
+                ['Balance', formatCurrency(balance), balance >= 0 ? [56, 161, 105] : [229, 62, 62]]
+            ];
+            const boxW = (pageW - margin * 2 - 16) / 3;
+            kpis.forEach((k, i) => {
+                const x = margin + i * (boxW + 8);
+                doc.setFillColor(247, 250, 255); doc.setDrawColor(225, 225, 225);
+                doc.roundedRect(x, y, boxW, 52, 4, 4, 'FD');
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 120, 120);
+                doc.text(k[0], x + 10, y + 19);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(k[2][0], k[2][1], k[2][2]);
+                doc.text(k[1], x + 10, y + 39);
+            });
+            y += 52 + 24;
+
+            // ---- Tabla de ventas ----
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(GRIS[0], GRIS[1], GRIS[2]);
+            doc.text(`Ventas (${ventas.length})`, margin, y);
+            doc.autoTable({
+                startY: y + 8,
+                head: [['#', 'Fecha', 'Cliente', 'Total', 'Ganancia', 'Estado']],
+                body: ventas.length
+                    ? ventas.map((v, i) => [
+                        i + 1, formatDate(v.fechaVenta), v.cliente ? v.cliente.nombre : 'Sin cliente',
+                        formatCurrency(v.total), formatCurrency(v.ganancia), v.estado || 'completada'
+                    ])
+                    : [['', '', 'Sin ventas en el periodo', '', '', '']],
+                styles: { fontSize: 9, cellPadding: 4, textColor: [60, 60, 60] },
+                headStyles: { fillColor: AZUL, textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [247, 250, 252] },
+                columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } },
+                margin: { left: margin, right: margin }
+            });
+            y = doc.lastAutoTable.finalY + 24;
+
+            // ---- Tabla de gastos ----
+            if (y > pageH - 120) { doc.addPage(); y = margin; }
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(GRIS[0], GRIS[1], GRIS[2]);
+            doc.text(`Gastos (${gastos.length})`, margin, y);
+            doc.autoTable({
+                startY: y + 8,
+                head: [['#', 'Fecha', 'Categoria', 'Descripcion', 'Valor']],
+                body: gastos.length
+                    ? gastos.map((g, i) => [
+                        i + 1, formatDate(g.fechaGasto), g.categoria ? g.categoria.nombre : 'Sin categoria',
+                        g.descripcion || '-', formatCurrency(g.valor)
+                    ])
+                    : [['', '', 'Sin gastos en el periodo', '', '']],
+                styles: { fontSize: 9, cellPadding: 4, textColor: [60, 60, 60] },
+                headStyles: { fillColor: NARANJA, textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [253, 250, 247] },
+                columnStyles: { 4: { halign: 'right' } },
+                margin: { left: margin, right: margin }
+            });
+
+            // ---- Pie de pagina con numeracion ----
+            const totalPaginas = doc.internal.getNumberOfPages();
+            for (let p = 1; p <= totalPaginas; p++) {
+                doc.setPage(p);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+                doc.text('EMPLANORTE S.A.S. - Reporte generado automaticamente', margin, pageH - 20);
+                doc.text(`Pagina ${p} de ${totalPaginas}`, pageW - margin, pageH - 20, { align: 'right' });
             }
 
-            // Descargar
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `reporte_emplanorte_${desde}_${hasta}.csv`;
-            link.click();
-            URL.revokeObjectURL(url);
-
-            showToast('Reporte descargado exitosamente', 'success');
+            doc.save(`reporte_emplanorte_${desde}_${hasta}.pdf`);
+            showToast('Reporte PDF descargado exitosamente', 'success');
         });
 
         // ---- Carga inicial ----

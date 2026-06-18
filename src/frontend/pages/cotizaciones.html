@@ -147,6 +147,58 @@
         .data-table .btn-convertir {
             white-space: nowrap;
         }
+        /* Pasarela de pago simulada */
+        .pago-badge {
+            background: #fff7e6;
+            color: #8a6d00;
+            border: 1px solid #ffe2a8;
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            font-size: 11px;
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        .pago-monto {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 12px 14px;
+            background: #f7faff;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+        }
+        .pago-monto span {
+            font-size: 12px;
+            color: var(--text-medium);
+        }
+        .pago-monto strong {
+            font-size: 20px;
+            color: var(--primary);
+        }
+        /* Resumen del plan de crédito */
+        .credito-resumen {
+            margin-top: 8px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .credito-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .credito-row:last-child { border-bottom: none; }
+        .credito-row span { color: var(--text-medium); }
+        .credito-row strong { color: var(--text-dark); }
+        .credito-total { background: #f7faff; }
+        .credito-total strong {
+            color: var(--primary);
+            font-size: 15px;
+        }
     </style>
 </head>
 <body class="app-body">
@@ -313,13 +365,99 @@
                             <option value="efectivo">Efectivo</option>
                             <option value="transferencia">Transferencia</option>
                             <option value="tarjeta">Tarjeta</option>
-                            <option value="credito">Crédito</option>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-app btn-app-outline" onclick="cerrarModalConvertir()">Cancelar</button>
                     <button type="submit" class="btn-app btn-app-success" id="btnConfirmarConversion">Convertir a Venta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODAL: Pasarela de Pago (Simulada)
+         ============================================================ -->
+    <div class="modal-overlay" id="modalPasarela">
+        <div class="modal" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>💳 Pasarela de Pago</h3>
+                <button class="modal-close" onclick="cerrarPasarela()">&times;</button>
+            </div>
+            <form id="formPasarela" onsubmit="procesarPago(event)" autocomplete="off">
+                <div class="modal-body">
+                    <div class="pago-monto">
+                        <span>Total de la compra</span>
+                        <strong id="pagoMonto">$ 0</strong>
+                    </div>
+                    <div class="form-group-app">
+                        <label for="tipoTarjeta">Tipo de tarjeta</label>
+                        <select id="tipoTarjeta" onchange="onTipoTarjetaChange()">
+                            <option value="debito">Tarjeta de débito</option>
+                            <option value="credito">Tarjeta de crédito</option>
+                        </select>
+                    </div>
+                    <div class="form-group-app">
+                        <label for="cardNumber">Número de tarjeta</label>
+                        <input type="text" id="cardNumber" inputmode="numeric"
+                               placeholder="0000 0000 0000 0000" maxlength="19"
+                               oninput="formatearTarjeta(this)">
+                    </div>
+                    <div class="form-group-app">
+                        <label for="cardName">Titular de la tarjeta</label>
+                        <input type="text" id="cardName" placeholder="Como aparece en la tarjeta">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group-app">
+                            <label for="cardExpiry">Vencimiento</label>
+                            <input type="text" id="cardExpiry" inputmode="numeric"
+                                   placeholder="MM/AA" maxlength="5" oninput="formatearVencimiento(this)">
+                        </div>
+                        <div class="form-group-app">
+                            <label for="cardCvv">CVV</label>
+                            <input type="text" id="cardCvv" inputmode="numeric" placeholder="123" maxlength="4">
+                        </div>
+                    </div>
+
+                    <!-- Solo visible para tarjeta de crédito: cuotas e intereses -->
+                    <div id="seccionCredito" class="hidden">
+                        <div class="form-group-app">
+                            <label for="creditoCuotas">Número de cuotas</label>
+                            <select id="creditoCuotas" onchange="recalcularCredito()">
+                                <option value="1">1 mes</option>
+                                <option value="2">2 meses</option>
+                                <option value="3">3 meses</option>
+                                <option value="6">6 meses</option>
+                                <option value="12" selected>12 meses</option>
+                                <option value="24">24 meses</option>
+                                <option value="36">36 meses</option>
+                            </select>
+                        </div>
+                        <div class="credito-resumen">
+                            <div class="credito-row">
+                                <span>Tasa de interés</span><strong id="creditoTasa">2% mensual</strong>
+                            </div>
+                            <div class="credito-row">
+                                <span>Valor de cada cuota</span><strong id="creditoValorCuota">$ 0</strong>
+                            </div>
+                            <div class="credito-row">
+                                <span>Total intereses</span><strong id="creditoIntereses">$ 0</strong>
+                            </div>
+                            <div class="credito-row credito-total">
+                                <span>Total a pagar</span><strong id="creditoTotal">$ 0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pagoError" class="hidden"
+                         style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);
+                                background:var(--danger-light);color:var(--danger);
+                                border:1px solid var(--danger);font-size:12px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-app btn-app-outline" onclick="cerrarPasarela()">Cancelar</button>
+                    <button type="submit" class="btn-app btn-app-success" id="btnPagar">Pagar</button>
                 </div>
             </form>
         </div>
@@ -336,6 +474,7 @@
         let cotizacionIdConvertir = null;
         let cotizacionIdEditando = null;
         let lineaCounter = 0;
+        let montoConvertir = 0;
 
         // ---- Inicialización ----
         checkSession();
@@ -542,7 +681,7 @@ async function abrirModalEditar(id) {
             const rowId = `line-${lineaCounter}`;
             const optionsHtml = productos.map(p => {
                 const id = p.id;
-                return `<option value="${id}" data-precio="${p.precioVenta || 0}">${p.nombre}</option>`;
+                return `<option value="${id}" data-precio="${p.precioVenta || 0}" data-stock="${p.stockDisponible || 0}">${p.nombre}</option>`;
             }).join('');
 
             const row = document.createElement('tr');
@@ -553,6 +692,7 @@ async function abrirModalEditar(id) {
                         <option value="">Seleccionar...</option>
                         ${optionsHtml}
                     </select>
+                    <div class="line-stock-hint" style="font-size:11px;margin-top:4px;color:var(--text-light);"></div>
                 </td>
                 <td>
                     <input type="number" class="line-cantidad" value="1" min="1" step="1"
@@ -587,7 +727,33 @@ async function abrirModalEditar(id) {
             const precio = parseFloat(row.querySelector('.line-precio').value) || 0;
             const subtotal = cantidad * precio;
             row.querySelector('.line-subtotal-cell').textContent = formatCurrency(subtotal);
+            actualizarStockHint(rowId);
             recalcularTotales();
+        }
+
+        // Muestra el stock disponible de la línea. NO bloquea: la cotización es una
+        // propuesta y el stock solo se valida al convertir a venta. Solo avisa.
+        function actualizarStockHint(rowId) {
+            const row = document.getElementById(rowId);
+            const select = row.querySelector('.line-producto');
+            const hint = row.querySelector('.line-stock-hint');
+            const option = select.options[select.selectedIndex];
+
+            if (!option || !option.value) {
+                hint.textContent = '';
+                return;
+            }
+
+            const stock = parseInt(option.dataset.stock) || 0;
+            const cantidad = parseInt(row.querySelector('.line-cantidad').value) || 0;
+
+            if (cantidad > stock) {
+                hint.textContent = `⚠ Stock disponible: ${stock} — supera el inventario (se validará al convertir a venta)`;
+                hint.style.color = 'var(--danger)';
+            } else {
+                hint.textContent = `Stock disponible: ${stock}`;
+                hint.style.color = 'var(--text-light)';
+            }
         }
 
         function eliminarLinea(rowId) {
@@ -630,6 +796,7 @@ async function abrirModalEditar(id) {
             // Recolectar líneas
             const rows = document.getElementById('lineItemsBody').querySelectorAll('tr');
             const detalles = [];
+            const excedenStock = [];
             let valid = true;
 
             rows.forEach(row => {
@@ -642,12 +809,26 @@ async function abrirModalEditar(id) {
                     valid = false;
                     return;
                 }
+
+                // Aviso informativo (no bloquea): la cantidad supera el stock actual.
+                const option = productoSelect.options[productoSelect.selectedIndex];
+                const stock = parseInt(option && option.dataset.stock) || 0;
+                if (cantidad > stock) {
+                    excedenStock.push(`${option.textContent} (pide ${cantidad}, hay ${stock})`);
+                }
+
                 detalles.push({ idProducto, cantidad, precioUnitario });
             });
 
             if (!valid || detalles.length === 0) {
                 showToast('Agrega al menos un producto válido con cantidad.', 'warning');
                 return;
+            }
+
+            // Mensajito a tener en cuenta: se guarda igual, el stock se valida al convertir a venta.
+            if (excedenStock.length > 0) {
+                showToast('Nota: ' + excedenStock.length + ' producto(s) superan el stock actual. '
+                    + 'La cotización se guardará; el stock se verificará al convertir a venta.', 'warning');
             }
 
             const user = getUser();
@@ -664,16 +845,22 @@ async function abrirModalEditar(id) {
             btn.textContent = 'Guardando...';
 
             try {
-    await ApiClient.crearCotizacion(data);
-    showToast('Cotización creada exitosamente', 'success');
-    cerrarModalNueva();
-    await cargarDatos();
-} catch (err) {
-                console.error('Error al crear cotización:', err);
-                showToast(err.message || 'Error al crear la cotización', 'error');
+                if (cotizacionIdEditando) {
+                    // Estamos editando: actualizar la cotización existente (NO crear otra).
+                    await ApiClient.actualizarCotizacion(cotizacionIdEditando, data);
+                    showToast('Cotización actualizada exitosamente', 'success');
+                } else {
+                    await ApiClient.crearCotizacion(data);
+                    showToast('Cotización creada exitosamente', 'success');
+                }
+                cerrarModalNueva();
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al guardar cotización:', err);
+                showToast(err.message || 'Error al guardar la cotización', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Guardar Cotización';
+                btn.textContent = cotizacionIdEditando ? 'Actualizar Cotización' : 'Guardar Cotización';
             }
         }
 
@@ -697,6 +884,8 @@ async function abrirModalEditar(id) {
         // ---- MODAL: Convertir a Venta ----
         function abrirModalConvertir(id) {
             cotizacionIdConvertir = id;
+            const cot = cotizaciones.find(c => c.id === id);
+            montoConvertir = cot ? (Number(cot.total) || 0) : 0;
             document.getElementById('labelCotizacionId').textContent = `#${id}`;
             document.getElementById('selectMetodoPago').value = '';
             openModal('modalConvertir');
@@ -716,12 +905,20 @@ async function abrirModalEditar(id) {
                 return;
             }
 
+            // Pago con tarjeta → pasar por la pasarela simulada (débito o crédito) antes de
+            // registrar la venta. Se conserva cotizacionIdConvertir y montoConvertir.
+            if (metodoPago === 'tarjeta') {
+                closeModal('modalConvertir');
+                abrirPasarela();
+                return;
+            }
+
             const btn = document.getElementById('btnConfirmarConversion');
             btn.disabled = true;
             btn.textContent = 'Convirtiendo...';
 
             try {
-                await ApiClient.convertirCotizacionAVenta(cotizacionIdConvertir, metodoPago);
+                await ejecutarConversion(metodoPago);
                 showToast('Cotización convertida a venta exitosamente', 'success');
                 cerrarModalConvertir();
                 await cargarDatos();
@@ -732,6 +929,165 @@ async function abrirModalEditar(id) {
                 btn.disabled = false;
                 btn.textContent = 'Convertir a Venta';
             }
+        }
+
+        // Lógica compartida: registra la venta a partir de la cotización en el backend.
+        // referenciaPago solo se envía cuando el pago pasó por la pasarela (tarjeta).
+        async function ejecutarConversion(metodoPago, referenciaPago = null) {
+            return ApiClient.convertirCotizacionAVenta(cotizacionIdConvertir, metodoPago, referenciaPago);
+        }
+
+        // ============================================================
+        //  PASARELA DE PAGO (SIMULADA) — no realiza ningún cobro real
+        // ============================================================
+        function abrirPasarela() {
+            document.getElementById('formPasarela').reset();
+            document.getElementById('pagoError').classList.add('hidden');
+            document.getElementById('pagoMonto').textContent = formatCurrency(montoConvertir);
+            document.getElementById('tipoTarjeta').value = 'debito';
+            onTipoTarjetaChange();
+            openModal('modalPasarela');
+        }
+
+        function cerrarPasarela() {
+            closeModal('modalPasarela');
+        }
+
+        // Muestra u oculta la sección de cuotas según el tipo de tarjeta elegido.
+        function onTipoTarjetaChange() {
+            const esCredito = document.getElementById('tipoTarjeta').value === 'credito';
+            document.getElementById('seccionCredito').classList.toggle('hidden', !esCredito);
+            document.getElementById('btnPagar').textContent = esCredito ? 'Pagar a crédito' : 'Pagar';
+            if (esCredito) {
+                document.getElementById('creditoCuotas').value = '12';
+                recalcularCredito();
+            }
+        }
+
+        // Formatea el número en grupos de 4 dígitos mientras se escribe.
+        function formatearTarjeta(input) {
+            const v = input.value.replace(/\D/g, '').slice(0, 16);
+            input.value = v.replace(/(.{4})/g, '$1 ').trim();
+        }
+
+        // Formatea el vencimiento como MM/AA.
+        function formatearVencimiento(input) {
+            let v = input.value.replace(/\D/g, '').slice(0, 4);
+            if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+            input.value = v;
+        }
+
+        // Algoritmo de Luhn: validación estándar real del número de tarjeta.
+        function luhnValido(numero) {
+            let suma = 0;
+            let alt = false;
+            for (let i = numero.length - 1; i >= 0; i--) {
+                let n = parseInt(numero[i], 10);
+                if (alt) { n *= 2; if (n > 9) n -= 9; }
+                suma += n;
+                alt = !alt;
+            }
+            return numero.length >= 13 && suma % 10 === 0;
+        }
+
+        function mostrarErrorPago(msg) {
+            const el = document.getElementById('pagoError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        async function procesarPago(e) {
+            e.preventDefault();
+
+            const esCredito = document.getElementById('tipoTarjeta').value === 'credito';
+            const labelBtn = esCredito ? 'Pagar a crédito' : 'Pagar';
+            const numero = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const titular = document.getElementById('cardName').value.trim();
+            const expiry = document.getElementById('cardExpiry').value.trim();
+            const cvv = document.getElementById('cardCvv').value.trim();
+            document.getElementById('pagoError').classList.add('hidden');
+
+            // ---- Validaciones de formato (iguales para débito y crédito) ----
+            if (!titular) return mostrarErrorPago('Ingresa el nombre del titular.');
+            if (!luhnValido(numero)) return mostrarErrorPago('Número de tarjeta inválido.');
+            if (!/^\d{2}\/\d{2}$/.test(expiry)) return mostrarErrorPago('Vencimiento inválido (usa MM/AA).');
+            const [mm, aa] = expiry.split('/').map(Number);
+            if (mm < 1 || mm > 12) return mostrarErrorPago('Mes de vencimiento inválido.');
+            const ahora = new Date();
+            const anioTarjeta = 2000 + aa;
+            const vencida = anioTarjeta < ahora.getFullYear()
+                || (anioTarjeta === ahora.getFullYear() && mm < (ahora.getMonth() + 1));
+            if (vencida) return mostrarErrorPago('La tarjeta está vencida.');
+            if (!/^\d{3,4}$/.test(cvv)) return mostrarErrorPago('CVV inválido.');
+
+            // ---- Simular procesamiento de la pasarela ----
+            const btn = document.getElementById('btnPagar');
+            btn.disabled = true;
+            btn.textContent = 'Procesando pago...';
+            await new Promise(r => setTimeout(r, 1500)); // latencia simulada
+
+            // Tarjeta de prueba que SIEMPRE se rechaza (estilo sandbox).
+            if (numero === '4000000000000002') {
+                btn.disabled = false;
+                btn.textContent = labelBtn;
+                return mostrarErrorPago('Pago rechazado por el banco emisor (fondos insuficientes).');
+            }
+
+            // ---- Aprobado: armar método, referencia y detalle según el tipo de tarjeta ----
+            const metodoPago = esCredito ? 'credito' : 'tarjeta';
+            const referencia = (esCredito ? 'CRE-' : 'TRX-') + Date.now().toString(36).toUpperCase()
+                + '-' + Math.floor(Math.random() * 9000 + 1000);
+
+            let detallePago = referencia;
+            let mensajeExito = 'Pago aprobado ✓ ' + referencia + '. Cotización convertida a venta.';
+            if (esCredito) {
+                const n = parseInt(document.getElementById('creditoCuotas').value) || 1;
+                const cuota = calcularValorCuota(montoConvertir, n, TASA_CREDITO_MENSUAL);
+                detallePago = referencia + ' | ' + n + ' cuotas de ' + formatCurrency(cuota)
+                    + ' (tasa ' + (TASA_CREDITO_MENSUAL * 100).toFixed(0) + '% mensual)';
+                mensajeExito = 'Crédito aprobado ✓ ' + n + ' cuotas de ' + formatCurrency(cuota)
+                    + '. ' + referencia;
+            }
+
+            try {
+                await ejecutarConversion(metodoPago, detallePago);
+                cotizacionIdConvertir = null;
+                cerrarPasarela();
+                showToast(mensajeExito, 'success');
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al registrar la venta tras el pago:', err);
+                mostrarErrorPago(err.message || 'El pago se aprobó pero falló el registro de la venta.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = labelBtn;
+            }
+        }
+
+        // ============================================================
+        //  CRÉDITO (financiación a cuotas) — cálculo simulado
+        // ============================================================
+        const TASA_CREDITO_MENSUAL = 0.02; // 2% mensual (simulado)
+
+        // Amortización francesa: cuota fija = P·i / (1 − (1+i)^−n)
+        function calcularValorCuota(monto, n, i) {
+            if (i === 0) return monto / n;
+            return monto * i / (1 - Math.pow(1 + i, -n));
+        }
+
+        // Recalcula el plan de cuotas en vivo (sección de tarjeta de crédito).
+        function recalcularCredito() {
+            const n = parseInt(document.getElementById('creditoCuotas').value) || 1;
+            const cuota = calcularValorCuota(montoConvertir, n, TASA_CREDITO_MENSUAL);
+            const total = cuota * n;
+            const intereses = total - montoConvertir;
+
+            document.getElementById('creditoTasa').textContent =
+                (TASA_CREDITO_MENSUAL * 100).toFixed(0) + '% mensual';
+            document.getElementById('creditoValorCuota').textContent =
+                formatCurrency(cuota) + ' × ' + n;
+            document.getElementById('creditoIntereses').textContent = formatCurrency(intereses);
+            document.getElementById('creditoTotal').textContent = formatCurrency(total);
         }
     </script>
 </body>

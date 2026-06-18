@@ -96,7 +96,7 @@ CREATE TABLE ventas (
     total               DECIMAL(14,2)   NOT NULL DEFAULT 0 CHECK (total >= 0),
     total_costo         DECIMAL(14,2)   NOT NULL DEFAULT 0 CHECK (total_costo >= 0),
     ganancia            DECIMAL(14,2)   NOT NULL DEFAULT 0,
-    metodo_pago         VARCHAR(30)     NOT NULL CHECK (metodo_pago IN ('efectivo', 'transferencia', 'tarjeta', 'otro')),
+    metodo_pago         VARCHAR(30)     NOT NULL CHECK (metodo_pago IN ('efectivo', 'transferencia', 'tarjeta', 'credito', 'otro')),
     estado              VARCHAR(20)     NOT NULL DEFAULT 'completada' CHECK (estado IN ('completada', 'anulada')),
     observaciones       TEXT,
     creado_en           TIMESTAMP       NOT NULL DEFAULT NOW()
@@ -118,6 +118,22 @@ CREATE TABLE detalle_ventas (
 );
 
 COMMENT ON TABLE detalle_ventas IS 'Detalle de los productos incluidos en cada venta';
+
+-- TABLA: auditoria_ventas (Bitácora de creación/anulación de ventas)
+-- Las ventas son inmutables: se anulan (devolviendo el stock) y se crea una nueva.
+CREATE TABLE auditoria_ventas (
+    id             SERIAL          PRIMARY KEY,
+    id_venta       INT             NOT NULL REFERENCES ventas(id),
+    id_usuario     INT             REFERENCES usuarios(id),
+    usuario_nombre VARCHAR(150),
+    accion         VARCHAR(20)     NOT NULL CHECK (accion IN ('creacion', 'anulacion')),
+    numero_venta   VARCHAR(20),
+    total          DECIMAL(14,2),
+    estado         VARCHAR(20),
+    fecha_registro TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE auditoria_ventas IS 'Bitácora de auditoría: creación y anulación de ventas';
 
 -- TABLA: categorias_gasto (RF10 - Clasificación de gastos)
 CREATE TABLE categorias_gasto (
@@ -142,6 +158,23 @@ CREATE TABLE gastos (
 );
 
 COMMENT ON TABLE gastos IS 'Registro de egresos operativos y de funcionamiento';
+
+-- TABLA: auditoria_gastos (Bitácora de cambios de gastos)
+-- Guarda un snapshot inmutable por cada creación/edición de un gasto: quién y cuándo.
+CREATE TABLE auditoria_gastos (
+    id               SERIAL          PRIMARY KEY,
+    id_gasto         INT             NOT NULL REFERENCES gastos(id),
+    id_usuario       INT             REFERENCES usuarios(id),
+    usuario_nombre   VARCHAR(150),
+    accion           VARCHAR(20)     NOT NULL CHECK (accion IN ('creacion', 'edicion')),
+    categoria_nombre VARCHAR(100),
+    descripcion      VARCHAR(250),
+    valor            DECIMAL(14,2),
+    fecha_gasto      DATE,
+    fecha_registro   TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE auditoria_gastos IS 'Bitácora de auditoría: historial de cambios de cada gasto';
 
 -- TABLA: cotizaciones (RF14 - Registro de cotizaciones)
 CREATE TABLE cotizaciones (
@@ -270,30 +303,12 @@ FOR EACH ROW EXECUTE FUNCTION fn_actualizar_timestamp();
 CREATE TRIGGER trg_clientes_ts BEFORE UPDATE ON clientes
 FOR EACH ROW EXECUTE FUNCTION fn_actualizar_timestamp();
 
--- Trigger: Descontar Inventario Automáticamente tras Venta (RF08)
-CREATE OR REPLACE FUNCTION fn_descontar_stock()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_stock_actual INT;
-BEGIN
-    SELECT stock_disponible INTO v_stock_actual FROM productos WHERE id = NEW.id_producto;
-    
-    IF v_stock_actual < NEW.cantidad THEN
-        RAISE EXCEPTION 'Stock insuficiente para el producto ID %: disponible %, solicitado %', 
-            NEW.id_producto, v_stock_actual, NEW.cantidad;
-    END IF;
-
-    UPDATE productos 
-    SET stock_disponible = stock_disponible - NEW.cantidad 
-    WHERE id = NEW.id_producto;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_descontar_stock
-AFTER INSERT ON detalle_ventas
-FOR EACH ROW EXECUTE FUNCTION fn_descontar_stock();
+-- Inventario (RF08): el descuento y la validación de stock se manejan en la capa
+-- de aplicación (VentaService / CotizacionService), que es la ÚNICA fuente de
+-- verdad del inventario. Antes existía un trigger fn_descontar_stock/
+-- trg_descontar_stock que también descontaba; se eliminó para evitar lógica
+-- duplicada y la dependencia del orden de escritura de Hibernate.
+-- Los stocks de la semilla ya reflejan las ventas de ejemplo de abajo.
 
 -- Generadores de Consecutivos (Automatización)
 CREATE OR REPLACE FUNCTION fn_generar_numero_venta()
@@ -338,11 +353,11 @@ INSERT INTO categorias_producto (nombre, descripcion) VALUES
 -- Productos (RF03)
 INSERT INTO productos (codigo, nombre, descripcion, id_categoria, capacidad_ml, costo_unitario, precio_venta, stock_disponible, stock_minimo, unidad_medida) VALUES
 ('PET-100', 'Envase PET 100ml con Tapa', 'Envase cilíndrico transparente para cosméticos', 1, 100.0, 350.00, 600.00, 150, 15, 'unidades'),
-('PET-250', 'Envase PET 250ml con Tapa', 'Envase cilíndrico transparente estándar', 1, 250.0, 500.00, 850.00, 200, 20, 'unidades'),
+('PET-250', 'Envase PET 250ml con Tapa', 'Envase cilíndrico transparente estándar', 1, 250.0, 500.00, 850.00, 180, 20, 'unidades'),
 ('PET-500', 'Envase PET 500ml con Tapa', 'Envase para jugos o aguas con tapa de seguridad', 1, 500.0, 750.00, 1200.00, 100, 15, 'unidades'),
-('AMB-100', 'Envase Ámbar 100ml con Gotero', 'Frasco de vidrio/plástico ámbar para aceites', 2, 100.0, 600.00, 1100.00, 200, 10, 'unidades'),
+('AMB-100', 'Envase Ámbar 100ml con Gotero', 'Frasco de vidrio/plástico ámbar para aceites', 2, 100.0, 600.00, 1100.00, 100, 10, 'unidades'),
 ('AMB-250', 'Envase Ámbar 250ml con Atomizador', 'Botella ámbar ideal para esencias y tónicos', 2, 250.0, 900.00, 1500.00, 60, 10, 'unidades'),
-('ASE-1000', 'Botella Aseo 1L con Asa', 'Envase con asa ergonómica para desinfectante', 3, 1000.0, 950.00, 1700.00, 120, 15, 'unidades'),
+('ASE-1000', 'Botella Aseo 1L con Asa', 'Envase con asa ergonómica para desinfectante', 3, 1000.0, 950.00, 1700.00, 100, 15, 'unidades'),
 ('HOG-005', 'Balde Plástico 5L con Manija', 'Balde reforzado para el hogar', 5, 5000.0, 3500.00, 6000.00, 30, 5, 'unidades');
 
 -- Clientes
@@ -384,11 +399,11 @@ INSERT INTO detalle_cotizaciones (id_cotizacion, id_producto, cantidad, precio_u
 INSERT INTO ventas (numero_venta, id_cliente, id_usuario, fecha_venta, subtotal, descuento, total, total_costo, ganancia, metodo_pago, estado, observaciones) VALUES
 ('VTA-000001', 2, 3, '2026-03-15 14:00:00', 110000.00, 0.00, 110000.00, 60000.00, 50000.00, 'transferencia', 'completada', 'Conversión automática de la cotización COT-000002');
 INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario, costo_unitario, subtotal_linea, costo_linea, ganancia_linea) VALUES
-(1, 4, 100, 1100.00, 600.00, 110000.00, 60000.00, 50000.00); -- Nota: Esto activará el trigger trg_descontar_stock para el producto 4
+(1, 4, 100, 1100.00, 600.00, 110000.00, 60000.00, 50000.00); -- El stock del producto 4 ya viene ajustado en su INSERT
 
 -- Venta 2 (Directa)
 INSERT INTO ventas (numero_venta, id_cliente, id_usuario, fecha_venta, subtotal, descuento, total, total_costo, ganancia, metodo_pago, estado, observaciones) VALUES
 ('VTA-000002', 3, 2, '2026-03-16 09:15:00', 51000.00, 2000.00, 49000.00, 31000.00, 18000.00, 'efectivo', 'completada', 'Venta al detal directa en mostrador');
 INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario, costo_unitario, subtotal_linea, costo_linea, ganancia_linea) VALUES
 (2, 2, 20, 850.00, 500.00, 17000.00, 10000.00, 7000.00),
-(2, 6, 20, 1700.00, 950.00, 34000.00, 19000.00, 15000.00); -- Nota: Esto descontará stock de productos 2 y 6
+(2, 6, 20, 1700.00, 950.00, 34000.00, 19000.00, 15000.00); -- El stock de los productos 2 y 6 ya viene ajustado en sus INSERT

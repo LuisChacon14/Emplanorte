@@ -158,6 +158,10 @@ const ApiClient = {
     });
 },
 
+    async listarAuditoriaGasto(id) {
+        return this.request(`/gastos/${id}/auditoria`, { method: 'GET' });
+    },
+
     async listarCategoriasGasto() {
         return this.request('/gastos/categorias', { method: 'GET' });
     },
@@ -193,6 +197,17 @@ async listarDetalleVenta(id) {
     return this.request(`/ventas/${id}/detalles`, { method: 'GET' });
 },
 
+async anularVenta(id, idUsuario, contrasena) {
+    return this.request(`/ventas/${id}/anular`, {
+        method: 'POST',
+        body: JSON.stringify({ idUsuario, contrasena })
+    });
+},
+
+async listarAuditoriaVenta(id) {
+    return this.request(`/ventas/${id}/auditoria`, { method: 'GET' });
+},
+
     // ==========================================
     // 6. MÓDULO COTIZACIONES (RF14)
     // ==========================================
@@ -217,10 +232,10 @@ async listarDetalleCotizacion(id) {
     return this.request(`/cotizaciones/${id}/detalles`, { method: 'GET' });
 },
 
-    async convertirCotizacionAVenta(id, metodoPago) {
+    async convertirCotizacionAVenta(id, metodoPago, referenciaPago = null) {
         return this.request(`/cotizaciones/convertir/${id}`, {
             method: 'POST',
-            body: JSON.stringify({ metodoPago })
+            body: JSON.stringify({ metodoPago, referenciaPago })
         });
     },
 

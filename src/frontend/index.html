@@ -100,7 +100,15 @@
                     errorMsg.classList.remove('hidden');
                 }
             } catch (err) {
-                errorMsg.textContent = 'Error de conexión con el servidor backend.';
+                // Distinguir entre "backend caído" y un error devuelto por el backend.
+                // fetch() lanza TypeError ("Failed to fetch") solo cuando no hay conexión.
+                if (err instanceof TypeError) {
+                    errorMsg.textContent = 'No se pudo conectar con el servidor. '
+                        + 'Verifica que el backend esté encendido (http://localhost:8080).';
+                } else {
+                    // Mensaje real que envió el backend (credenciales, validación, etc.)
+                    errorMsg.textContent = err.message || 'Ocurrió un error al iniciar sesión.';
+                }
                 errorMsg.classList.remove('hidden');
                 console.error(err);
             } finally {

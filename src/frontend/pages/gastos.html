@@ -92,6 +92,64 @@
             color: var(--text-light);
             font-size: 13px;
         }
+        /* --- Ver Gasto: detalle + auditoría --- */
+        .ver-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 16px;
+            margin-bottom: 18px;
+        }
+        .ver-grid .ver-full { grid-column: 1 / -1; }
+        .ver-label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            margin-bottom: 2px;
+        }
+        .ver-value {
+            font-size: 14px;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        .ver-subtitle {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 10px;
+            padding-top: 14px;
+            border-top: 1px solid var(--card-border);
+        }
+        .audit-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .audit-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #fafbfc;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+        }
+        .audit-badge {
+            flex-shrink: 0;
+            height: fit-content;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .audit-crea { background: #f0fff4; color: #38a169; }
+        .audit-edita { background: var(--warning-light); color: var(--warning); }
+        .audit-head { font-size: 12px; color: var(--text-medium); margin-bottom: 3px; }
+        .audit-detail { font-size: 13px; color: var(--text-dark); }
+        .audit-loading { font-size: 13px; color: var(--text-light); text-align: center; padding: 16px; }
     </style>
 </head>
 <body class="app-body">
@@ -232,6 +290,45 @@
         </div>
     </div>
 
+    <!-- ======================= MODAL: Ver Gasto (detalle + auditoría) ======================= -->
+    <div class="modal-overlay" id="modalVerGasto">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>Detalle del Gasto</h3>
+                <button class="modal-close" onclick="closeModal('modalVerGasto')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ver-grid">
+                    <div>
+                        <span class="ver-label">Categoría</span>
+                        <span id="verCategoria" class="ver-value">-</span>
+                    </div>
+                    <div>
+                        <span class="ver-label">Valor</span>
+                        <span id="verValor" class="ver-value">-</span>
+                    </div>
+                    <div>
+                        <span class="ver-label">Fecha</span>
+                        <span id="verFecha" class="ver-value">-</span>
+                    </div>
+                    <div>
+                        <span class="ver-label">Registrado por</span>
+                        <span id="verRegistradoPor" class="ver-value">-</span>
+                    </div>
+                    <div class="ver-full">
+                        <span class="ver-label">Descripción</span>
+                        <span id="verDescripcion" class="ver-value">-</span>
+                    </div>
+                </div>
+                <h4 class="ver-subtitle">📜 Historial de cambios</h4>
+                <div id="verHistorial" class="audit-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-app btn-app-outline" onclick="closeModal('modalVerGasto')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="../js/api.js"></script>
     <script src="../js/utils.js"></script>
@@ -331,9 +428,14 @@
                         <td class="fw-bold text-danger">${formatCurrency(g.valor)}</td>
                         <td>${registradoPor}</td>
                         <td>
-                            <button class="btn-app btn-app-outline btn-app-sm" onclick="editarGasto(${g.id})">
-                                Editar
-                            </button>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn-app btn-app-outline btn-app-sm" onclick="verGasto(${g.id})">
+                                    Ver
+                                </button>
+                                <button class="btn-app btn-app-outline btn-app-sm" onclick="editarGasto(${g.id})">
+                                    Editar
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -451,6 +553,69 @@
             document.getElementById('gastoFecha').value = gasto.fechaGasto || todayISO();
 
             openModal('modalRegistrarGasto');
+        }
+
+        // =============================================
+        // VER GASTO (detalle + bitácora de auditoría)
+        // =============================================
+        async function verGasto(id) {
+            const gasto = gastosList.find(g => g.id === id);
+            if (!gasto) {
+                showToast('No se encontró el gasto seleccionado', 'error');
+                return;
+            }
+
+            document.getElementById('verCategoria').textContent = gasto.categoria ? gasto.categoria.nombre : '-';
+            document.getElementById('verDescripcion').textContent = gasto.descripcion || '-';
+            document.getElementById('verValor').textContent = formatCurrency(gasto.valor);
+            document.getElementById('verFecha').textContent = formatDate(gasto.fechaGasto);
+            document.getElementById('verRegistradoPor').textContent = gasto.usuario ? gasto.usuario.nombre : '-';
+
+            const histEl = document.getElementById('verHistorial');
+            histEl.innerHTML = '<div class="audit-loading">Cargando historial...</div>';
+            openModal('modalVerGasto');
+
+            try {
+                const auditoria = await ApiClient.listarAuditoriaGasto(id);
+                renderHistorial(auditoria);
+            } catch (err) {
+                console.error('Error al cargar la auditoría:', err);
+                histEl.innerHTML = '<div class="audit-loading">No se pudo cargar el historial de cambios.</div>';
+            }
+        }
+
+        function renderHistorial(auditoria) {
+            const histEl = document.getElementById('verHistorial');
+            if (!auditoria || auditoria.length === 0) {
+                histEl.innerHTML = '<div class="audit-loading">Sin registros de auditoría para este gasto.</div>';
+                return;
+            }
+
+            histEl.innerHTML = auditoria.map(a => {
+                const esCreacion = a.accion === 'creacion';
+                const quien = a.usuarioNombre || ('Usuario #' + (a.idUsuario || '?'));
+                return `
+                    <div class="audit-item">
+                        <span class="audit-badge ${esCreacion ? 'audit-crea' : 'audit-edita'}">
+                            ${esCreacion ? 'Creación' : 'Edición'}
+                        </span>
+                        <div class="audit-body">
+                            <div class="audit-head"><strong>${quien}</strong> · ${formatDateTime(a.fechaRegistro)}</div>
+                            <div class="audit-detail">
+                                ${a.categoriaNombre || '-'} · ${a.descripcion || '-'} · <strong>${formatCurrency(a.valor)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Formatea un timestamp ISO a fecha y hora local legible.
+        function formatDateTime(iso) {
+            if (!iso) return '-';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
         }
 
         document.getElementById('formRegistrarGasto').addEventListener('submit', async (e) => {
