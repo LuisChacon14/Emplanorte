@@ -8,10 +8,10 @@
 -- ============================================================
 
 -- Configuración del entorno
-\c postgres
-DROP DATABASE IF EXISTS emplanorte; 
-CREATE DATABASE emplanorte; 
-\c emplanorte
+--\c postgres
+--DROP DATABASE IF EXISTS emplanorte; 
+--CREATE DATABASE emplanorte; 
+--\c emplanorte
 
 SET client_encoding = 'UTF8';
 
