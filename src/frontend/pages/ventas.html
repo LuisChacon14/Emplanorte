@@ -159,6 +159,97 @@
         .modal-venta .modal {
             max-width: 720px;
         }
+        /* --- Ver venta: detalle + auditoría --- */
+        .ver-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .ver-label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            margin-bottom: 2px;
+        }
+        .ver-value { font-size: 14px; color: var(--text-dark); font-weight: 600; }
+        .ver-subtitle {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 10px;
+            padding-top: 14px;
+            border-top: 1px solid var(--card-border);
+        }
+        .ver-prod-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+        .ver-prod-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #fafbfc;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+        .audit-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+        .audit-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #fafbfc;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+        }
+        .audit-badge {
+            flex-shrink: 0;
+            height: fit-content;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .audit-crea  { background: #f0fff4; color: #38a169; }
+        .audit-anula { background: var(--danger-light); color: var(--danger); }
+        .audit-head { font-size: 12px; color: var(--text-medium); margin-bottom: 3px; }
+        .audit-detail { font-size: 13px; color: var(--text-dark); }
+        .audit-loading { font-size: 13px; color: var(--text-light); text-align: center; padding: 16px; }
+        /* --- Pasarela de pago + hint de stock --- */
+        .line-stock-hint { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .pago-monto {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 12px 14px;
+            background: #f7faff;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+        }
+        .pago-monto span { font-size: 12px; color: var(--text-medium); }
+        .pago-monto strong { font-size: 20px; color: var(--primary); }
+        .credito-resumen {
+            margin-top: 8px;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .credito-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .credito-row:last-child { border-bottom: none; }
+        .credito-row span { color: var(--text-medium); }
+        .credito-row strong { color: var(--text-dark); }
+        .credito-total { background: #f7faff; }
+        .credito-total strong { color: var(--primary); font-size: 15px; }
         .data-table-wrapper {
             overflow-x: auto;
         }
@@ -341,6 +432,149 @@
         </div>
     </div>
 
+    <!-- Modal: Ver Venta (detalle + auditoría) -->
+    <div class="modal-overlay" id="modalVerVenta">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <h3>Detalle de la Venta</h3>
+                <button class="modal-close" onclick="closeModal('modalVerVenta')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ver-grid">
+                    <div><span class="ver-label">Nº Venta</span><span id="verNumero" class="ver-value">-</span></div>
+                    <div><span class="ver-label">Estado</span><span id="verEstado" class="ver-value">-</span></div>
+                    <div><span class="ver-label">Cliente</span><span id="verCliente" class="ver-value">-</span></div>
+                    <div><span class="ver-label">Fecha</span><span id="verFecha" class="ver-value">-</span></div>
+                    <div><span class="ver-label">Método de pago</span><span id="verMetodo" class="ver-value">-</span></div>
+                    <div><span class="ver-label">Total</span><span id="verTotal" class="ver-value">-</span></div>
+                </div>
+                <h4 class="ver-subtitle">🛒 Productos</h4>
+                <div id="verProductos" class="ver-prod-list"></div>
+                <h4 class="ver-subtitle">📜 Historial de la venta</h4>
+                <div id="verHistorialVenta" class="audit-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-app btn-app-outline" onclick="closeModal('modalVerVenta')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Anular Venta (requiere contraseña) -->
+    <div class="modal-overlay" id="modalAnularVenta">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>Anular Venta</h3>
+                <button class="modal-close" onclick="closeModal('modalAnularVenta')">&times;</button>
+            </div>
+            <form id="formAnularVenta" onsubmit="confirmarAnulacion(event)">
+                <div class="modal-body">
+                    <p style="font-size:13px;color:var(--text-medium);margin-bottom:14px;">
+                        Vas a anular la venta <strong id="anularNumero"></strong>. Esto devolverá el stock
+                        de los productos al inventario y <strong>no se puede deshacer</strong>.
+                    </p>
+                    <div class="form-group-app">
+                        <label for="anularPassword">Confirma tu contraseña para continuar *</label>
+                        <input type="password" id="anularPassword" placeholder="Contraseña de tu cuenta"
+                               autocomplete="current-password" required>
+                    </div>
+                    <div id="anularError" class="hidden"
+                         style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);
+                                background:var(--danger-light);color:var(--danger);
+                                border:1px solid var(--danger);font-size:12px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-app btn-app-outline" onclick="closeModal('modalAnularVenta')">Cancelar</button>
+                    <button type="submit" class="btn-app btn-app-danger" id="btnConfirmarAnular">Anular Venta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Pasarela de Pago (Simulada) -->
+    <div class="modal-overlay" id="modalPasarela">
+        <div class="modal" style="max-width:460px;">
+            <div class="modal-header">
+                <h3>💳 Pasarela de Pago</h3>
+                <button class="modal-close" onclick="cerrarPasarela()">&times;</button>
+            </div>
+            <form id="formPasarela" onsubmit="procesarPago(event)" autocomplete="off">
+                <div class="modal-body">
+                    <div class="pago-monto">
+                        <span>Total de la venta</span>
+                        <strong id="pagoMonto">$ 0</strong>
+                    </div>
+                    <div class="form-group-app">
+                        <label for="tipoTarjeta">Tipo de tarjeta</label>
+                        <select id="tipoTarjeta" onchange="onTipoTarjetaChange()">
+                            <option value="debito">Tarjeta de débito</option>
+                            <option value="credito">Tarjeta de crédito</option>
+                        </select>
+                    </div>
+                    <div class="form-group-app">
+                        <label for="cardNumber">Número de tarjeta</label>
+                        <input type="text" id="cardNumber" inputmode="numeric"
+                               placeholder="0000 0000 0000 0000" maxlength="19"
+                               oninput="formatearTarjeta(this)">
+                    </div>
+                    <div class="form-group-app">
+                        <label for="cardName">Titular de la tarjeta</label>
+                        <input type="text" id="cardName" placeholder="Como aparece en la tarjeta">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group-app">
+                            <label for="cardExpiry">Vencimiento</label>
+                            <input type="text" id="cardExpiry" inputmode="numeric"
+                                   placeholder="MM/AA" maxlength="5" oninput="formatearVencimiento(this)">
+                        </div>
+                        <div class="form-group-app">
+                            <label for="cardCvv">CVV</label>
+                            <input type="text" id="cardCvv" inputmode="numeric" placeholder="123" maxlength="4">
+                        </div>
+                    </div>
+
+                    <!-- Solo visible para tarjeta de crédito: cuotas e intereses -->
+                    <div id="seccionCredito" class="hidden">
+                        <div class="form-group-app">
+                            <label for="creditoCuotas">Número de cuotas</label>
+                            <select id="creditoCuotas" onchange="recalcularCredito()">
+                                <option value="1">1 mes</option>
+                                <option value="2">2 meses</option>
+                                <option value="3">3 meses</option>
+                                <option value="6">6 meses</option>
+                                <option value="12" selected>12 meses</option>
+                                <option value="24">24 meses</option>
+                                <option value="36">36 meses</option>
+                            </select>
+                        </div>
+                        <div class="credito-resumen">
+                            <div class="credito-row">
+                                <span>Tasa de interés</span><strong id="creditoTasa">2% mensual</strong>
+                            </div>
+                            <div class="credito-row">
+                                <span>Valor de cada cuota</span><strong id="creditoValorCuota">$ 0</strong>
+                            </div>
+                            <div class="credito-row">
+                                <span>Total intereses</span><strong id="creditoIntereses">$ 0</strong>
+                            </div>
+                            <div class="credito-row credito-total">
+                                <span>Total a pagar</span><strong id="creditoTotal">$ 0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pagoError" class="hidden"
+                         style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);
+                                background:var(--danger-light);color:var(--danger);
+                                border:1px solid var(--danger);font-size:12px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-app btn-app-outline" onclick="cerrarPasarela()">Cancelar</button>
+                    <button type="submit" class="btn-app btn-app-success" id="btnPagar">Pagar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="../js/api.js"></script>
     <script src="../js/utils.js"></script>
@@ -461,9 +695,16 @@
                         <td>${metodoPago}</td>
                         <td>${renderBadgeEstado(estado)}</td>
                         <td>
-                            <button class="btn-app btn-app-outline btn-app-sm" onclick="abrirModalEditarVenta(${v.id})">
-                                Editar
-                            </button>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn-app btn-app-outline btn-app-sm" onclick="verVenta(${v.id})">
+                                    Ver
+                                </button>
+                                ${estado !== 'anulada'
+                                    ? `<button class="btn-app btn-app-danger btn-app-sm" onclick="abrirModalAnular(${v.id})">
+                                           Anular
+                                       </button>`
+                                    : ''}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -531,62 +772,136 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
 
             openModal('modalNuevaVenta');
         }
-        async function abrirModalEditarVenta(id) {
-    const venta = ventas.find(v => v.id === id);
+        // ============================================================
+        // VER VENTA (detalle de productos + bitácora de auditoría)
+        // ============================================================
+        async function verVenta(id) {
+            const venta = ventas.find(v => v.id === id);
+            if (!venta) {
+                showToast('No se encontró la venta seleccionada', 'error');
+                return;
+            }
 
-    if (!venta) {
-        showToast('No se encontró la venta seleccionada', 'error');
-        return;
-    }
+            document.getElementById('verNumero').textContent = venta.numeroVenta || ('#' + id);
+            document.getElementById('verCliente').textContent = venta.cliente ? venta.cliente.nombre : 'Sin cliente';
+            document.getElementById('verFecha').textContent = formatDateTime(venta.fechaVenta);
+            document.getElementById('verTotal').textContent = formatCurrency(venta.total);
+            document.getElementById('verEstado').innerHTML = renderBadgeEstado(venta.estado || 'completada');
+            document.getElementById('verMetodo').textContent = capitalizarMetodoPago(venta.metodoPago);
 
-    ventaIdEditando = id;
+            const prodEl = document.getElementById('verProductos');
+            const histEl = document.getElementById('verHistorialVenta');
+            prodEl.innerHTML = '<div class="audit-loading">Cargando...</div>';
+            histEl.innerHTML = '<div class="audit-loading">Cargando historial...</div>';
+            openModal('modalVerVenta');
 
-    document.querySelector('#modalNuevaVenta .modal-header h3').textContent = 'Editar Venta';
-    document.getElementById('btnGuardarVenta').textContent = 'Actualizar Venta';
-
-    document.getElementById('formNuevaVenta').reset();
-    document.getElementById('lineItemsBody').innerHTML = '';
-    document.getElementById('ventaDescuento').value = Number(venta.descuento || 0);
-    document.getElementById('ventaObservaciones').value = venta.observaciones || '';
-    document.getElementById('ventaMetodoPago').value = venta.metodoPago || '';
-
-    const selectCliente = document.getElementById('ventaCliente');
-    selectCliente.innerHTML = '<option value="">Seleccionar cliente...</option>';
-    clientes.forEach(c => {
-        const idCliente = c.id;
-        const nombre = c.nombre || `Cliente #${idCliente}`;
-        selectCliente.innerHTML += `<option value="${idCliente}">${escapeHtml(nombre)}</option>`;
-    });
-    selectCliente.value = venta.cliente ? venta.cliente.id : '';
-
-    lineaCounter = 0;
-
-    try {
-        const detalles = await ApiClient.listarDetalleVenta(id);
-
-        if (Array.isArray(detalles) && detalles.length > 0) {
-            detalles.forEach(detalle => {
-                agregarLineaProducto();
-
-                const lineId = lineaCounter;
-                document.getElementById(`prod_${lineId}`).value = detalle.producto ? detalle.producto.id : '';
-                document.getElementById(`cant_${lineId}`).value = detalle.cantidad || 1;
-                document.getElementById(`precio_${lineId}`).value = Number(detalle.precioUnitario || 0);
-
-                recalcularLinea(lineId);
-            });
-        } else {
-            agregarLineaProducto();
+            try {
+                const [detalles, auditoria] = await Promise.all([
+                    ApiClient.listarDetalleVenta(id),
+                    ApiClient.listarAuditoriaVenta(id)
+                ]);
+                renderProductosVenta(detalles);
+                renderHistorialVenta(auditoria);
+            } catch (err) {
+                console.error('Error al cargar la venta:', err);
+                prodEl.innerHTML = '<div class="audit-loading">No se pudo cargar el detalle.</div>';
+                histEl.innerHTML = '';
+            }
         }
 
-        recalcularTotales();
-        openModal('modalNuevaVenta');
+        function renderProductosVenta(detalles) {
+            const prodEl = document.getElementById('verProductos');
+            if (!detalles || detalles.length === 0) {
+                prodEl.innerHTML = '<div class="audit-loading">Sin productos.</div>';
+                return;
+            }
+            prodEl.innerHTML = detalles.map(d => {
+                const nombre = d.producto ? d.producto.nombre : 'Producto';
+                return `<div class="ver-prod-row">
+                            <span>${escapeHtml(nombre)} × ${d.cantidad}</span>
+                            <strong>${formatCurrency(d.subtotalLinea)}</strong>
+                        </div>`;
+            }).join('');
+        }
 
-    } catch (err) {
-        console.error('Error cargando detalle de venta:', err);
-        showToast('Error al cargar los productos de la venta', 'error');
-    }
-}
+        function renderHistorialVenta(auditoria) {
+            const histEl = document.getElementById('verHistorialVenta');
+            if (!auditoria || auditoria.length === 0) {
+                histEl.innerHTML = '<div class="audit-loading">Sin registros de auditoría.</div>';
+                return;
+            }
+            histEl.innerHTML = auditoria.map(a => {
+                const esCreacion = a.accion === 'creacion';
+                const quien = a.usuarioNombre || ('Usuario #' + (a.idUsuario || '?'));
+                return `
+                    <div class="audit-item">
+                        <span class="audit-badge ${esCreacion ? 'audit-crea' : 'audit-anula'}">
+                            ${esCreacion ? 'Creación' : 'Anulación'}
+                        </span>
+                        <div class="audit-body">
+                            <div class="audit-head"><strong>${escapeHtml(quien)}</strong> · ${formatDateTime(a.fechaRegistro)}</div>
+                            <div class="audit-detail">${escapeHtml(a.numeroVenta || '')} · ${formatCurrency(a.total)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================================
+        // ANULAR VENTA (requiere contraseña; devuelve el stock)
+        // ============================================================
+        let ventaIdAnular = null;
+
+        function abrirModalAnular(id) {
+            const venta = ventas.find(v => v.id === id);
+            if (!venta) {
+                showToast('No se encontró la venta seleccionada', 'error');
+                return;
+            }
+            if (venta.estado === 'anulada') {
+                showToast('La venta ya está anulada', 'warning');
+                return;
+            }
+            ventaIdAnular = id;
+            document.getElementById('anularNumero').textContent = venta.numeroVenta || ('#' + id);
+            document.getElementById('anularPassword').value = '';
+            document.getElementById('anularError').classList.add('hidden');
+            openModal('modalAnularVenta');
+        }
+
+        async function confirmarAnulacion(event) {
+            event.preventDefault();
+            const errEl = document.getElementById('anularError');
+            errEl.classList.add('hidden');
+
+            const contrasena = document.getElementById('anularPassword').value;
+            if (!contrasena) {
+                errEl.textContent = 'Ingresa tu contraseña para confirmar.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            const user = getUser();
+            const idUsuario = user ? (user.id || user.idUsuario) : null;
+
+            const btn = document.getElementById('btnConfirmarAnular');
+            btn.disabled = true;
+            btn.textContent = 'Anulando...';
+            try {
+                await ApiClient.anularVenta(ventaIdAnular, idUsuario, contrasena);
+                showToast('Venta anulada. El stock fue devuelto al inventario.', 'success');
+                closeModal('modalAnularVenta');
+                ventaIdAnular = null;
+                await cargarDatos();
+            } catch (err) {
+                console.error('Error al anular venta:', err);
+                errEl.textContent = err.message || 'No se pudo anular la venta.';
+                errEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Anular Venta';
+            }
+        }
 
         function cerrarModalVenta() {
             closeModal('modalNuevaVenta');
@@ -607,7 +922,8 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
                 const id = p.id;
                 const nombre = p.nombre || `Producto #${id}`;
                 const precio = Number(p.precioVenta) || 0;
-                opcionesProductos += `<option value="${id}" data-precio="${precio}">${escapeHtml(nombre)}</option>`;
+                const stock = Number(p.stockDisponible) || 0;
+                opcionesProductos += `<option value="${id}" data-precio="${precio}" data-stock="${stock}">${escapeHtml(nombre)}</option>`;
             });
 
             row.innerHTML = `
@@ -618,6 +934,7 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
                 <input type="number" id="precio_${lineId}" min="0" step="100" value="0" oninput="recalcularLinea(${lineId})">
                 <div class="subtotal-cell" id="subtotalLinea_${lineId}">$ 0</div>
                 <button type="button" class="btn-remove-line" onclick="eliminarLinea(${lineId})" title="Eliminar línea">&times;</button>
+                <div class="line-stock-hint" id="stockHint_${lineId}" style="grid-column:1/-1;"></div>
             `;
 
             container.appendChild(row);
@@ -639,7 +956,33 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
             const subtotalLinea = cantidad * precioUnitario;
 
             document.getElementById(`subtotalLinea_${lineId}`).textContent = formatCurrency(subtotalLinea);
+            actualizarStockHintVenta(lineId);
             recalcularTotales();
+        }
+
+        // Muestra el stock disponible del producto de la línea y lo marca en rojo
+        // si la cantidad lo supera (en ventas el stock SÍ es un límite real).
+        function actualizarStockHintVenta(lineId) {
+            const select = document.getElementById(`prod_${lineId}`);
+            const hint = document.getElementById(`stockHint_${lineId}`);
+            if (!select || !hint) return;
+
+            const option = select.options[select.selectedIndex];
+            if (!option || !option.value) {
+                hint.textContent = '';
+                return;
+            }
+
+            const stock = parseInt(option.getAttribute('data-stock')) || 0;
+            const cantidad = parseInt(document.getElementById(`cant_${lineId}`).value) || 0;
+
+            if (cantidad > stock) {
+                hint.textContent = `⚠ Stock disponible: ${stock} — no puedes vender más de lo que hay`;
+                hint.style.color = 'var(--danger)';
+            } else {
+                hint.textContent = `Stock disponible: ${stock}`;
+                hint.style.color = 'var(--text-light)';
+            }
         }
 
         function eliminarLinea(lineId) {
@@ -725,6 +1068,20 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
                 return false;
             }
 
+            // Validación de stock (en ventas SÍ bloquea: no se puede vender sin inventario)
+            const sinStock = [];
+            for (const d of detalles) {
+                const prod = productos.find(p => p.id === d.idProducto);
+                const stock = prod ? (Number(prod.stockDisponible) || 0) : 0;
+                if (d.cantidad > stock) {
+                    sinStock.push(`${prod ? prod.nombre : 'Producto'} (disponible ${stock}, pides ${d.cantidad})`);
+                }
+            }
+            if (sinStock.length > 0) {
+                showToast('Stock insuficiente: ' + sinStock.join('; '), 'warning');
+                return false;
+            }
+
             // Obtener idUsuario de la sesión
             const user = getUser();
             const idUsuario = user ? (user.id || user.idUsuario) : null;
@@ -738,23 +1095,22 @@ document.getElementById('btnGuardarVenta').textContent = 'Registrar Venta';
                 detalles: detalles
             };
 
+            // Pago con tarjeta → pasar por la pasarela (débito/crédito) antes de registrar.
+            if (metodoPago === 'tarjeta') {
+                const subtotal = detalles.reduce((s, d) => s + d.cantidad * d.precioUnitario, 0);
+                montoVenta = Math.max(0, subtotal - descuento);
+                ventaPendiente = ventaData;
+                abrirPasarela();
+                return false;
+            }
+
             // Deshabilitar botón mientras se procesa
             const btnGuardar = document.getElementById('btnGuardarVenta');
             btnGuardar.disabled = true;
             btnGuardar.textContent = 'Registrando...';
 
             try {
-                if (ventaIdEditando) {
-    await ApiClient.actualizarVenta(ventaIdEditando, ventaData);
-    showToast('Venta actualizada exitosamente', 'success');
-} else {
-    await ApiClient.registrarVenta(ventaData);
-    showToast('Venta registrada exitosamente', 'success');
-}
-
-ventaIdEditando = null;
-cerrarModalVenta();
-await cargarDatos();
+                await enviarVenta(ventaData);
             } catch (err) {
                 console.error('Error registrando venta:', err);
                 showToast(err.message || 'Error al registrar la venta', 'error');
@@ -764,6 +1120,163 @@ await cargarDatos();
             }
 
             return false;
+        }
+
+        // Registra la venta en el backend (lógica compartida: pago directo y pasarela).
+        async function enviarVenta(data) {
+            await ApiClient.registrarVenta(data);
+            showToast('Venta registrada exitosamente', 'success');
+            closeModal('modalPasarela');
+            cerrarModalVenta();
+            await cargarDatos();
+        }
+
+        // ============================================================
+        //  PASARELA DE PAGO (SIMULADA) para Nueva Venta — sin cobro real
+        // ============================================================
+        let montoVenta = 0;
+        let ventaPendiente = null;
+        const TASA_CREDITO_MENSUAL = 0.02; // 2% mensual (simulado)
+
+        function abrirPasarela() {
+            document.getElementById('formPasarela').reset();
+            document.getElementById('pagoError').classList.add('hidden');
+            document.getElementById('pagoMonto').textContent = formatCurrency(montoVenta);
+            document.getElementById('tipoTarjeta').value = 'debito';
+            onTipoTarjetaChange();
+            openModal('modalPasarela');
+        }
+
+        function cerrarPasarela() {
+            closeModal('modalPasarela');
+        }
+
+        // Muestra u oculta la sección de cuotas según el tipo de tarjeta.
+        function onTipoTarjetaChange() {
+            const esCredito = document.getElementById('tipoTarjeta').value === 'credito';
+            document.getElementById('seccionCredito').classList.toggle('hidden', !esCredito);
+            document.getElementById('btnPagar').textContent = esCredito ? 'Pagar a crédito' : 'Pagar';
+            if (esCredito) {
+                document.getElementById('creditoCuotas').value = '12';
+                recalcularCredito();
+            }
+        }
+
+        function formatearTarjeta(input) {
+            const v = input.value.replace(/\D/g, '').slice(0, 16);
+            input.value = v.replace(/(.{4})/g, '$1 ').trim();
+        }
+
+        function formatearVencimiento(input) {
+            let v = input.value.replace(/\D/g, '').slice(0, 4);
+            if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+            input.value = v;
+        }
+
+        // Algoritmo de Luhn: validación estándar real del número de tarjeta.
+        function luhnValido(numero) {
+            let suma = 0;
+            let alt = false;
+            for (let i = numero.length - 1; i >= 0; i--) {
+                let n = parseInt(numero[i], 10);
+                if (alt) { n *= 2; if (n > 9) n -= 9; }
+                suma += n;
+                alt = !alt;
+            }
+            return numero.length >= 13 && suma % 10 === 0;
+        }
+
+        // Amortización francesa: cuota fija = P·i / (1 − (1+i)^−n)
+        function calcularValorCuota(monto, n, i) {
+            if (i === 0) return monto / n;
+            return monto * i / (1 - Math.pow(1 + i, -n));
+        }
+
+        function recalcularCredito() {
+            const n = parseInt(document.getElementById('creditoCuotas').value) || 1;
+            const cuota = calcularValorCuota(montoVenta, n, TASA_CREDITO_MENSUAL);
+            const total = cuota * n;
+            const intereses = total - montoVenta;
+
+            document.getElementById('creditoTasa').textContent =
+                (TASA_CREDITO_MENSUAL * 100).toFixed(0) + '% mensual';
+            document.getElementById('creditoValorCuota').textContent =
+                formatCurrency(cuota) + ' × ' + n;
+            document.getElementById('creditoIntereses').textContent = formatCurrency(intereses);
+            document.getElementById('creditoTotal').textContent = formatCurrency(total);
+        }
+
+        function mostrarErrorPago(msg) {
+            const el = document.getElementById('pagoError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        async function procesarPago(e) {
+            e.preventDefault();
+
+            const esCredito = document.getElementById('tipoTarjeta').value === 'credito';
+            const labelBtn = esCredito ? 'Pagar a crédito' : 'Pagar';
+            const numero = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const titular = document.getElementById('cardName').value.trim();
+            const expiry = document.getElementById('cardExpiry').value.trim();
+            const cvv = document.getElementById('cardCvv').value.trim();
+            document.getElementById('pagoError').classList.add('hidden');
+
+            // ---- Validaciones de formato (iguales para débito y crédito) ----
+            if (!titular) return mostrarErrorPago('Ingresa el nombre del titular.');
+            if (!luhnValido(numero)) return mostrarErrorPago('Número de tarjeta inválido.');
+            if (!/^\d{2}\/\d{2}$/.test(expiry)) return mostrarErrorPago('Vencimiento inválido (usa MM/AA).');
+            const [mm, aa] = expiry.split('/').map(Number);
+            if (mm < 1 || mm > 12) return mostrarErrorPago('Mes de vencimiento inválido.');
+            const ahora = new Date();
+            const anioTarjeta = 2000 + aa;
+            const vencida = anioTarjeta < ahora.getFullYear()
+                || (anioTarjeta === ahora.getFullYear() && mm < (ahora.getMonth() + 1));
+            if (vencida) return mostrarErrorPago('La tarjeta está vencida.');
+            if (!/^\d{3,4}$/.test(cvv)) return mostrarErrorPago('CVV inválido.');
+
+            // ---- Simular procesamiento de la pasarela ----
+            const btn = document.getElementById('btnPagar');
+            btn.disabled = true;
+            btn.textContent = 'Procesando pago...';
+            await new Promise(r => setTimeout(r, 1500)); // latencia simulada
+
+            // Tarjeta de prueba que SIEMPRE se rechaza (estilo sandbox).
+            if (numero === '4000000000000002') {
+                btn.disabled = false;
+                btn.textContent = labelBtn;
+                return mostrarErrorPago('Pago rechazado por el banco emisor (fondos insuficientes).');
+            }
+
+            // ---- Aprobado: método, referencia y detalle según el tipo de tarjeta ----
+            const metodoPago = esCredito ? 'credito' : 'tarjeta';
+            const referencia = (esCredito ? 'CRE-' : 'TRX-') + Date.now().toString(36).toUpperCase()
+                + '-' + Math.floor(Math.random() * 9000 + 1000);
+
+            let detallePago = referencia;
+            if (esCredito) {
+                const n = parseInt(document.getElementById('creditoCuotas').value) || 1;
+                const cuota = calcularValorCuota(montoVenta, n, TASA_CREDITO_MENSUAL);
+                detallePago = referencia + ' | ' + n + ' cuotas de ' + formatCurrency(cuota)
+                    + ' (tasa ' + (TASA_CREDITO_MENSUAL * 100).toFixed(0) + '% mensual)';
+            }
+
+            // Finalizar la venta pendiente con el método y la referencia del pago
+            ventaPendiente.metodoPago = metodoPago;
+            ventaPendiente.observaciones = (ventaPendiente.observaciones ? ventaPendiente.observaciones + ' | ' : '')
+                + detallePago;
+
+            try {
+                await enviarVenta(ventaPendiente);
+                ventaPendiente = null;
+            } catch (err) {
+                console.error('Error al registrar la venta tras el pago:', err);
+                mostrarErrorPago(err.message || 'El pago se aprobó pero falló el registro de la venta.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = labelBtn;
+            }
         }
     </script>
 </body>

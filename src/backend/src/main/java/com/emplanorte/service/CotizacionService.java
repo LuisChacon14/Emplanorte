@@ -165,11 +165,9 @@ public Cotizacion actualizarCotizacion(Long id, CotizacionRequest request) {
         Producto producto = productoRepository.findById(item.getIdProducto())
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-        if (producto.getStockDisponible() < item.getCantidad()) {
-            throw new RuntimeException("Stock insuficiente para \"" + producto.getNombre()
-                    + "\". Disponible: " + producto.getStockDisponible()
-                    + ", solicitado: " + item.getCantidad());
-        }
+        // CP-44 - La cotización es una propuesta comercial: NO descuenta ni valida
+        // el inventario. Se permiten cantidades mayores al stock disponible.
+        // El stock solo se valida al CONVERTIR la cotización en venta.
 
         BigDecimal cantidadBD = new BigDecimal(item.getCantidad());
         BigDecimal precioUnitario = item.getPrecioUnitario() != null
@@ -198,6 +196,11 @@ public Cotizacion actualizarCotizacion(Long id, CotizacionRequest request) {
 
     @Transactional
     public Venta convertirAVenta(Long cotizacionId, String metodoPago) {
+        return convertirAVenta(cotizacionId, metodoPago, null);
+    }
+
+    @Transactional
+    public Venta convertirAVenta(Long cotizacionId, String metodoPago, String referenciaPago) {
         Cotizacion cotizacion = cotizacionRepository.findById(cotizacionId)
                 .orElseThrow(() -> new RuntimeException("Cotización no encontrada"));
 
@@ -206,9 +209,15 @@ public Cotizacion actualizarCotizacion(Long id, CotizacionRequest request) {
         }
 
         List<DetalleCotizacion> detallesCot = detalleCotizacionRepository.findByCotizacionId(cotizacionId);
-        
+
         // Generar venta
         String numeroVenta = ventaRepository.generarNumeroVenta();
+
+        // Observaciones: origen de la venta + referencia de la pasarela de pago (si aplica)
+        String observaciones = "Generada automáticamente de la cotización " + cotizacion.getNumeroCotizacion();
+        if (referenciaPago != null && !referenciaPago.isBlank()) {
+            observaciones += " | Ref. pago: " + referenciaPago;
+        }
 
         Venta venta = new Venta();
         venta.setNumeroVenta(numeroVenta);
@@ -220,7 +229,7 @@ public Cotizacion actualizarCotizacion(Long id, CotizacionRequest request) {
         venta.setTotal(cotizacion.getTotal());
         venta.setMetodoPago(metodoPago);
         venta.setEstado("completada");
-        venta.setObservaciones("Generada automáticamente de la cotización " + cotizacion.getNumeroCotizacion());
+        venta.setObservaciones(observaciones);
 
         BigDecimal totalCostoAcumulado = BigDecimal.ZERO;
         List<DetalleVenta> detallesVenta = new ArrayList<>();

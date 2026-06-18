@@ -1,5 +1,6 @@
 package com.emplanorte.controller;
 
+import com.emplanorte.model.AuditoriaGasto;
 import com.emplanorte.model.CategoriaGasto;
 import com.emplanorte.model.Gasto;
 import com.emplanorte.service.GastoService;
@@ -39,6 +40,12 @@ public class GastoController {
 public ResponseEntity<Gasto> actualizarGasto(@PathVariable Long id, @RequestBody Gasto gasto) {
     return ResponseEntity.ok(gastoService.actualizarGasto(id, gasto));
 }
+
+    // Bitácora de auditoría: historial de cambios de un gasto
+    @GetMapping("/{id}/auditoria")
+    public ResponseEntity<List<AuditoriaGasto>> obtenerAuditoriaGasto(@PathVariable Long id) {
+        return ResponseEntity.ok(gastoService.obtenerAuditoria(id));
+    }
 
     // RF10 - Obtener categorías de gastos
     @GetMapping("/categorias")

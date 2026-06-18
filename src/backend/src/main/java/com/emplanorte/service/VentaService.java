@@ -6,16 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.emplanorte.dto.ItemVentaRequest;
 import com.emplanorte.dto.VentaRequest;
+import com.emplanorte.model.AuditoriaVenta;
 import com.emplanorte.model.Cliente;
 import com.emplanorte.model.DetalleVenta;
 import com.emplanorte.model.Producto;
 import com.emplanorte.model.Usuario;
 import com.emplanorte.model.Venta;
+import com.emplanorte.repository.AuditoriaVentaRepository;
 import com.emplanorte.repository.ClienteRepository;
 import com.emplanorte.repository.DetalleVentaRepository;
 import com.emplanorte.repository.ProductoRepository;
@@ -39,6 +42,12 @@ public class VentaService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private AuditoriaVentaRepository auditoriaVentaRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<Venta> obtenerTodas() {
         return ventaRepository.findAll();
@@ -153,6 +162,8 @@ public class VentaService {
             detalleVentaRepository.save(det);
         }
 
+        registrarAuditoria(ventaGuardada, "creacion", usuario);
+
         return ventaGuardada;
     }
     public List<DetalleVenta> obtenerDetalles(Long ventaId) {
@@ -161,4 +172,64 @@ public class VentaService {
 
     return detalleVentaRepository.findByVentaId(ventaId);
 }
+
+    /**
+     * Anula una venta de forma segura: verifica la contraseña del usuario que la
+     * ejecuta, devuelve el stock de los productos al inventario y deja registro
+     * en la bitácora de auditoría. Las ventas no se editan: se anulan y se crea
+     * una nueva corregida.
+     */
+    @Transactional
+    public Venta anularVenta(Long ventaId, Long idUsuario, String contrasena) {
+        Venta venta = ventaRepository.findById(ventaId)
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
+
+        if ("anulada".equals(venta.getEstado())) {
+            throw new RuntimeException("La venta ya fue anulada previamente");
+        }
+
+        // Verificación de identidad: contraseña del usuario actual (BCrypt)
+        if (idUsuario == null) {
+            throw new RuntimeException("No se identificó al usuario que solicita la anulación");
+        }
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (contrasena == null || !passwordEncoder.matches(contrasena, usuario.getContrasenaHash())) {
+            throw new RuntimeException("Contraseña incorrecta. La venta no fue anulada.");
+        }
+
+        // Devolver el stock de cada producto al inventario
+        List<DetalleVenta> detalles = detalleVentaRepository.findByVentaId(ventaId);
+        for (DetalleVenta det : detalles) {
+            Producto producto = det.getProducto();
+            producto.setStockDisponible(producto.getStockDisponible() + det.getCantidad());
+            productoRepository.save(producto);
+        }
+
+        venta.setEstado("anulada");
+        Venta guardada = ventaRepository.save(venta);
+
+        registrarAuditoria(guardada, "anulacion", usuario);
+        return guardada;
+    }
+
+    // Historial de auditoría de una venta (creación / anulación)
+    public List<AuditoriaVenta> obtenerAuditoria(Long ventaId) {
+        return auditoriaVentaRepository.findByIdVentaOrderByFechaRegistroAsc(ventaId);
+    }
+
+    // Guarda un registro de auditoría con un snapshot del estado de la venta.
+    private void registrarAuditoria(Venta venta, String accion, Usuario actor) {
+        AuditoriaVenta a = new AuditoriaVenta();
+        a.setIdVenta(venta.getId());
+        a.setAccion(accion);
+        a.setNumeroVenta(venta.getNumeroVenta());
+        a.setTotal(venta.getTotal());
+        a.setEstado(venta.getEstado());
+        if (actor != null && actor.getId() != null) {
+            a.setIdUsuario(actor.getId());
+            a.setUsuarioNombre(actor.getNombre());
+        }
+        auditoriaVentaRepository.save(a);
+    }
 }

@@ -680,7 +680,7 @@ a { text-decoration: none; color: inherit; }
     max-height: 85vh;
     display: flex;
     flex-direction: column;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     transform: translateY(20px);
     transition: transform 0.3s ease;
@@ -716,10 +716,21 @@ a { text-decoration: none; color: inherit; }
 
 .modal-close:hover { color: var(--danger); }
 
+/* Cuando el modal envuelve su contenido en un <form>, el form es el hijo
+   flex directo: debe ser columna y poder encogerse para que el body scrollee
+   y el footer quede fijo abajo. */
+.modal > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
 .modal-body {
     padding: 24px;
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
 }
 
 .modal-footer {
